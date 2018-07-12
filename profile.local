@@ -20,7 +20,7 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-JBIN_DIR=`dirname "$0"`
+JBIN_DIR="/usr/jbin"
 
 # If we have vim as editor, export this
 if [ -x "/usr/bin/vim" ]; then
