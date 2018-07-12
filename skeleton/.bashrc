@@ -1,2 +1,2 @@
 #!/bin/bash
-. /usr/joebin/profile.local
+. /usr/jbin/profile.local
