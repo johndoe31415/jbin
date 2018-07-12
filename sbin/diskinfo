@@ -1,0 +1,88 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	diskinfo: Get some information about hard disks, including the ATA number
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import string
+import subprocess
+import re
+
+_ata_link_re = re.compile("/ata(?P<ata>\d+)/host(?P<host>\d+)/target(?P<target_chan>\d+):(?P<target_id>\d+):(?P<target_lun>\d+)/")
+def get_ata_aliases():
+	result = { }
+	dirname = "/sys/block/"
+	for name in os.listdir(dirname):
+		linkname = dirname + name
+		target = os.readlink(linkname)
+		match = _ata_link_re.search(target)
+		if match:
+			match = match.groupdict()
+			match = { key: int(value) for (key, value) in match.items() }
+			result["/dev/" + name] = "ata%d.%d%d" % (match["ata"], match["target_id"], match["target_lun"])
+	return result
+
+ata_aliases = get_ata_aliases()
+
+def determine_disk_size_bytes(filename):
+	with open(filename, "rb") as f:
+		f.seek(0, os.SEEK_END)
+		return f.tell()
+
+_drive_model_re = re.compile("Model Number:\s*(?P<model>.*)")
+_drive_serial_re = re.compile("Serial Number:\s*(?P<serial>.*)")
+def get_drive_info(filename):
+	hdparm = subprocess.check_output([ "hdparm", "-I", filename ]).decode()
+	match = _drive_model_re.search(hdparm)
+	if match:
+		model = match.groupdict()["model"].strip()
+	else:
+		model = "?"
+	match = _drive_serial_re.search(hdparm)
+	if match:
+		serial = match.groupdict()["serial"].strip()
+	else:
+		serial = "?"
+	return (model, serial)
+
+def print_disk_info(filename):
+	size = determine_disk_size_bytes(filename)
+	unit_kilo = 1000
+	unit_mega = unit_kilo * unit_kilo
+	unit_giga = unit_mega * unit_kilo
+	unit_tera = unit_giga * unit_kilo
+
+	if size / unit_tera > 1:
+		size_pretty = "%.3f TB" % (size / unit_tera)
+	else:
+		size_pretty = "%.0f GB" % (size / unit_giga)
+	(model, serial) = get_drive_info(filename)
+	alias = ata_aliases.get(filename) or ""
+	print("%s: %.0f MB = %s %s (%s) %s" % (filename, size / unit_mega, size_pretty, model, serial, alias))
+	
+
+disk_names = [ "/dev/sd" + letter for letter in string.ascii_lowercase ]
+for disk_name in disk_names:
+	try:
+		if os.path.exists(disk_name):
+			print_disk_info(disk_name)
+	except OSError as e:
+		print("%s: %s" % (disk_name, str(e)))
+

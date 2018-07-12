@@ -1,0 +1,70 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	watch_size: Watch size of a file/disk grow over time
+#	Copyright (C) 2009-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import stat
+import sys
+import time
+from FilesizeFormatter import FilesizeFormatter
+
+if len(sys.argv) < 2:
+	print("%s [filename/dirname] ([delay])" % (sys.argv[0]))
+	sys.exit(1)
+
+filename = sys.argv[1]
+delay = 10
+if len(sys.argv) >= 3:
+	delay = float(sys.argv[2])
+
+
+def isfile(filename):
+	statresult = os.stat(filename)
+	return not stat.S_ISDIR(statresult.st_mode)
+
+def getfilesize(filename):
+	return os.stat(filename).st_size
+
+def getdisksize(diskname):
+	statresult = os.statvfs(diskname)
+	return statresult.f_bsize * (statresult.f_blocks - statresult.f_bavail)
+
+if isfile(filename):
+	querysize = getfilesize
+else:
+	querysize = getdisksize
+
+fmtsize = FilesizeFormatter()
+lastsize = querysize(filename)
+lasttime = time.time()
+while True:
+	time.sleep(delay)
+	size = querysize(filename)
+	now = time.time()
+
+	tdiff = now - lasttime
+	sdiff = size - lastsize
+	speed = sdiff / tdiff
+	print("Total %s: %s/s" % (fmtsize(size), fmtsize(round(speed))))
+
+	lastsize = size
+	lasttime = now
+

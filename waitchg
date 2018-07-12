@@ -1,0 +1,52 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	waitchg: Wait for a file to change/get created/removed
+#	Copyright (C) 2016-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import time
+import os
+
+if len(sys.argv) != 2:
+	print("%s [Filename]" % (sys.argv[0]))
+	print()
+	print("Waits for filename to change mtime or get created/removed.")
+	sys.exit(1)
+
+def stat(filename):
+	try:
+		result = os.stat(filename)
+	except FileNotFoundError:
+		result = None
+	return result
+
+filename = sys.argv[1]
+last_check = stat(filename)
+
+while True:	
+	time.sleep(1)
+	check_now = stat(filename)
+	if (last_check is None) and (check_now is not None):
+		break
+	elif (last_check is not None) and (check_now is None):
+		break
+	elif (last_check is not None) and (check_now is not None):
+		if last_check.st_mtime != check_now.st_mtime:
+			break

@@ -1,0 +1,68 @@
+#!/bin/bash -e
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	wipedisk_luks: Use LUKS to securely erase a device in software
+#	Copyright (C) 2016-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+if [ "$#" != "1" ]; then
+	echo "$0 [Device to wipe]"
+	exit 1
+fi
+
+WIPEDEV="$1"
+SHM_DIR="/dev/shm/"
+if [ ! -d "$SHM_DIR" ]; then
+	echo "SHM directory $SHM_DIR does not exist."
+	exit 1
+fi
+
+echo "WARNING! You are about to wipe the disk ${WIPEDEV}."
+SIZE=`blockdev --getsize64 "${WIPEDEV}"`
+echo "$(($SIZE/1024/1024)) MiB = $(($SIZE/1024/1024/1024)) GiB of data will be wiped!"
+read -p "If you want to proceed, type all uppercase 'yes': " really
+if [ "$really" != "YES" ]; then
+	echo "Aborted."
+	exit 1
+fi
+
+UUID=`uuidgen`
+HEADER_FILE="${SHM_DIR}wipedisk_${UUID}_header"
+KEY_FILE="${SHM_DIR}wipedisk_${UUID}_key"
+MAPNAME="wipedisk_${UUID}"
+MAP_FILE="/dev/mapper/${MAPNAME}"
+
+umask 0077
+dd if=/dev/zero of="$HEADER_FILE" bs=1M count=10
+dd if=/dev/urandom of="$KEY_FILE" bs=4096 count=1
+
+echo "luksFormat..."
+cryptsetup luksFormat --header "$HEADER_FILE" --batch-mode --align-payload=0 --iter-time 2000 -h sha256 -c aes-xts-plain64 -s 256 --key-file="${KEY_FILE}" "$WIPEDEV"
+echo "luksOpen..."
+cryptsetup luksOpen --header "$HEADER_FILE" --key-file="${KEY_FILE}" "${WIPEDEV}" "${MAPNAME}"
+if [ ! -b "${MAP_FILE}" ]; then
+	echo "Open of LUKS device failed."
+	exit 1
+fi
+rm -f "${KEY_FILE}" "${HEADER_FILE}"
+echo "Wiping..."
+dd if=/dev/zero of="${MAP_FILE}" bs=1M || true
+echo "Finished, closing device..."
+cryptsetup luksClose ${MAPNAME}
+sync
+echo "All done."

@@ -1,0 +1,50 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	cntwget: wget multiple files in sequential order with faked user agent/referrer
+#	Copyright (C) 2009-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+if [ "$#" != "4" ]; then
+	echo "$0 [URL] [from] [to]"
+	echo "e.g.: http://referrer.com http://foobar.de/#.pdf 1 10"
+	echo "e.g.: http://referrer.com http://foobar.de/#.pdf 01 50"
+	exit 1
+fi
+
+REFERRER="$1"
+BASEURL="$2"
+FROM="$3"
+TO="$4"
+
+numlenfrom="${#FROM}"
+numlento="${#TO}"
+if [ "$numlenfrom" != "$numlento" ]; then
+	format="%d"
+else
+	format="%0${numlenfrom}d"
+fi
+
+cnt="$(($FROM))"
+while [ "$cnt" -le "$(($TO))" ]; do
+	fcnt=`printf "$format" "$cnt"`
+	URL=`echo "$BASEURL" | sed 's/#/'$fcnt'/g;'`
+	echo "$URL"
+	wget "--referer=${REFERER}" -U "Mozilla/5.0 (X11; U; Linux x86_64; de; rv:1.9.0.10) Gecko/2009050400 Gentoo Firefox/3.0.10" "$URL"
+	cnt="$(($cnt+1))"
+done

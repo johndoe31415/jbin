@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	flatten_directory: flatten a directory hierarchy
+#	Copyright (C) 2015-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import shutil
+
+directories = [ ]
+for (basedir, subdirs, files) in os.walk("."):
+	if basedir == ".":
+		continue
+	directories.append(basedir)
+	for filename in files:
+		srcfile = basedir + "/" + filename
+		dstfile = filename
+		if not os.path.exists(dstfile):
+			shutil.move(srcfile, dstfile)
+
+directories.sort(reverse = True)
+for directory in directories:
+	try:
+		os.rmdir(directory)
+	except OSError:
+		pass

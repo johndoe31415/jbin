@@ -1,0 +1,431 @@
+#!/usr/bin/env python
+# =============================================================================
+# mved - an editor-focused multiple file move utility
+# $Id: mved,v 1.13 2005/09/13 21:41:30 stsp Exp $
+# =============================================================================
+
+from os import system, rename, remove, getenv, getpid, \
+    read, write, close, fsync, lseek, getcwd
+from os.path import expanduser, isfile, isdir, abspath, islink
+from sys import argv, exit, stdout, stderr
+from getopt import getopt, GetoptError
+from tempfile import mkstemp, NamedTemporaryFile
+from time import sleep
+
+version = '1.2'
+
+LICENSE="""\
+Copyright 2003-2005 Stefan Sperling <stsp@stsp.in-berlin.de>
+Copyright 2004 by Neels Janosch Hofmeyr <neels at binarchy.net>
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+THE AUTHOR OR ANY CONTRIBUTERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+"""
+DIRECTIONS="""\
+  - Directions -
+* mved loads a list of filenames into your favourite text editor. 
+  You can then edit the filenames conveniently. 
+* You can move files to other directories by prepending a new path to the 
+  filename. A leading tilde (eg ~/foo) is replaced with your home directory.
+* When you are done you save the file and mved renames and/or moves all the 
+  files according to your changes.
+* To discard your changes, simply exit the editor without saving the file.
+
+Note: Circular renaming is handled by moving one file to a temporary 
+filename. This would be in the current working directory, so make sure you
+have write access. For large files, stay on the same storage device.
+
+mved is based on an idea by Neels Janosch Hofmeyr
+[http://binarchy.net/bergmann/]
+"""
+editor = getenv('EDITOR')
+if not editor: 
+    editor = getenv('VISUAL')
+if not editor: 
+    editor = '/usr/bin/vi' # enter default editor here
+
+USAGE="""\
+Usage: mved [options] [file1 file2 ...]
+Options:
+    -h, --help                       Print detailed help and license.
+    -e <editor>, --editor <editor>   Editor to use. The default editor is
+                                     %s.
+                                     This can be changed by setting the 
+                                     EDITOR environment variable.
+    -f, --force                      overwrite existing files.""" % editor
+
+
+def giveup(message):
+    """ print an error message to stderr and exit. """
+    stderr.write('ERROR: %s\n' % message)
+    exit(1)
+
+def warn(message):
+    """ print a warning message to stderr. """
+    stderr.write('WARNING: %s\n' % message)
+
+def usage(long = 0):
+    """ print usage information. """
+    print 'mved %s - an editor-focused multiple file move utility' % version
+    if long: 
+        print LICENSE
+        print DIRECTIONS
+    print USAGE
+
+def getoptions():
+    """ get options. returns a list of all non-option arguments. """
+    global editor, force
+    try:
+         options, args = getopt(argv[1:], 'he:f', ['help', 'editor=','force'])
+    except GetoptError, e:
+        giveup(str(e) + ", try 'mved --help' for more information.")
+    
+    for opt, arg in options:
+        if opt in ('-h', '--help'):
+            usage(long = 1)
+            exit(0)
+        if opt in ('-e', '--editor'):
+            editor = arg
+        if opt in ('-f', '--force'):
+            force = 1
+    return args
+
+def edit(oldnames):
+    """ let user edit a list of filenames. 
+    returns a list containing the new filenames.  """
+
+    def discardempty(list):
+        """ returns a clone of list with empty elements removed. """
+        out = []
+        for item in list:
+            if item: 
+                out.append(item)
+        return out
+
+    tmpfd, tmpfilename = mkstemp()
+    try:
+        for name in oldnames:
+            write(tmpfd, '%s\n' % name)
+        fsync(tmpfd)
+    except IOError, e:
+        giveup("%s: %s", (tmpfilename, str(e)))
+    
+    # warn user if EDITOR is not an absolute path
+    if editor != abspath(editor):
+        warn("EDITOR (" + editor \
+            + ") is not an absolute path. This is a security risk.\n")
+
+    ret = system('%s %s' % (editor, tmpfilename))
+    if ret == 0: # editor exited gracefully
+        try:
+            newnames = readlines(tmpfd)       
+            close(tmpfd)
+            remove(tmpfilename)
+        except OSError, e:
+            giveup("%s: %s", (tmpfilename, str(e)))
+        except IOError, e:
+            giveup("%s: %s", (tmpfilename, str(e)))
+        for i in range(len(newnames)):
+            newnames[i] = newnames[i].strip('\n')
+        newnames = discardempty(newnames) # throw out empty lines
+        
+        if len(newnames) == len(oldnames): 
+            return newnames
+        else:
+            giveup('Numbers of new and old filenames differ.')
+    else:
+        try:
+            remove(tmpfilename)
+        except IOError, e:
+            warn("Could not remove %s: %s", (tmpfilename, str(e)))
+        giveup('Editor exited ungracefully.')
+
+
+
+def readlines(fd):
+    """ returns a list of all lines in file descriptor fd. """
+    out = []
+    str = ''
+    lseek(fd, 0, 0)
+    while True:
+        ch = read(fd, 1)
+        if ch == '':
+            if str: out.append(str)
+            break
+        if ch != '\n':
+            str += ch
+        elif str: 
+            out.append(str)
+            str = ''
+    return out 
+
+class ExistenceChecker:
+    "layer to decouple filename existence checking from the Renamer."
+    def exists(self, filename):
+        return self.isfile(filename) or self.isdir(filename)
+
+    def isfile(self, filename):
+        return isfile(filename)
+
+    def isdir(self, dirname):
+        return isdir(dirname)
+   
+
+class Renamer:
+    "manages the connections between the RenamingNode items."
+    null = -1
+    
+    def __init__(self):
+        self.list = []
+        self.existencechecker = ExistenceChecker()
+    
+    def size(self):
+        return len(self.list)
+
+    def add(self, fromfile, tofile):
+        # print "checking in %s -> %s " (fromfile, tofile)
+        # find occurences
+        fromindex = self.findfileindex(fromfile)
+        if fromindex == Renamer.null:
+            # print "creating %s " % fromfile
+            self.list.append(RenamingNode(fromfile))
+            fromindex = self.findfileindex(fromfile)
+        
+        toindex=self.findfileindex(tofile)
+        if toindex == Renamer.null:
+            # print "creating %s" % tofile
+            self.list.append(RenamingNode(tofile))
+            toindex = self.findfileindex(tofile)
+
+        if self.list[fromindex].tofile != Renamer.null:
+            giveup("file name appears twice as source: %s"
+                % self.list[fromindex].filename)
+
+        if self.list[toindex].fromfile != Renamer.null:
+            giveup("file name appears twice as destination: %s"
+                % self.list[toindex].filename)
+        
+        self.list[toindex].fromfile = self.list[fromindex]
+        self.list[fromindex].tofile = self.list[toindex]
+    
+    def findfileindex(self,filename):
+        for x in range(len(self.list)):
+            if self.list[x].filename == filename:
+                return x
+        return Renamer.null
+    
+    def renamingsequence(self):
+        self.sequence = []
+        while len(self.list) > 0:
+            again = 0
+
+            for i in self.list:
+                i.seen = 0
+            
+            for x in range(len(self.list)):
+                if self.list[x].fromfile != Renamer.null:
+                    again = 1
+                    self.execute(self.list[x])
+                    break
+                
+            if again == 0:
+                break
+        return self.sequence
+
+    def settofile(self, of, tofile):
+        if of.tofile != Renamer.null:
+            of.tofile.fromfile = Renamer.null
+        of.tofile = Renamer.null
+        if tofile != Renamer.null:
+            self.setfromfile(tofile, Renamer.null)
+            of.tofile = tofile
+            tofile.fromfile = of
+    
+    def setfromfile(self, of, fromfile):
+        if of.fromfile != Renamer.null:
+            of.fromfile.tofile = Renamer.null
+        of.fromfile = Renamer.null
+        if fromfile != Renamer.null:
+            self.settofile(fromfile, Renamer.null)
+            of.fromfile = fromfile
+            fromfile.tofile = of
+    
+    def remove(self, file):
+        self.setfromfile(file, Renamer.null)
+        self.settofile(file, Renamer.null)
+        self.list.remove(file)
+
+    def execute(self,to):
+        # print "running execute('%s', '%s')" % (frm.filename, to.filename)
+
+        if to == Renamer.null:
+            return
+
+        now = to
+        # find the end of the renaming chain
+        while now.tofile != Renamer.null:
+            now.seen = 1
+            now = now.tofile
+
+            if now.seen > 0:
+                # create a temporary file name to break a circular renaming
+                # file must be on the same filesystem!
+                tempFile = NamedTemporaryFile(dir=getcwd())
+                tempNode = RenamingNode(tempFile.name)
+                wasto = now.tofile
+                self.list.append(tempNode)
+                self.setfromfile(tempNode, now)
+                self.execute(tempNode)
+
+                self.list.append(tempNode)
+                self.settofile(tempNode, wasto)
+                return # re-iterate
+
+        # 'now' is now the last renaming in its chain (now.tofile == null)
+        # run down the renamings starting with `now'
+        while now.fromfile != Renamer.null:
+            now = now.fromfile
+            # print "moving %s ==> %s" (now.filename, now.tofile.filename)
+            self.sequence.append(SequenceNode(now.filename,
+                now.tofile.filename))
+            self.remove(now.tofile)
+        
+    def checkrenamings(self, force):
+        errors = ""
+        for i in self.list:
+            
+            if force == 0 and i.fromfile != Renamer.null \
+                and i.tofile == Renamer.null \
+                and self.existencechecker.exists(i.filename):
+
+                errors += "\n * will not overwrite: %s (%s -> %s)" \
+                    % (i.filename, i.fromfile.filename, i.filename)
+
+            if i.tofile != Renamer.null \
+                and (not self.existencechecker.exists(i.filename)):
+                
+                errors += "\n ** file does not exist: %s (%s -> %s)" \
+                    % (i.filename, i.filename, i.tofile.filename)
+
+                
+        if errors != "":
+            giveup("nothing renamed because of the following conflicts: "
+                + errors + "\n(check out option -f, --force)")
+
+
+class RenamingNode:
+    "saves renamings for a certain filename in both directions."
+    def __init__(self, filename):
+        self.fromfile = Renamer.null
+        self.tofile = Renamer.null
+        self.filename = filename
+        self.seen = 0
+
+class SequenceNode:
+    "a node of a list returned by Renamer.renamingsequence()"
+    def __init__(self, frm, to):
+        self.frm = frm
+        self.to = to
+
+def symlinkvimbug():
+    tmpdir = getenv('TMPDIR')
+    if not tmpdir:
+        return
+    if islink(tmpdir) and 'vim' in editor:
+        warn("TMPDIR (" + tmpdir + ") is a symlink, and your editor is vim.\n"
++ "mved may behave as if you hadn't changed a single filename.\n"
++ "The cause of this bug is unkown. A workaround is to either make sure\n"
++ "that TMPDIR is not a symlink, or using another editor, e.g. by aliasing\n"
++ "mved as 'mved -e <editor>'.\n")
+        for i in range(9, 0, -1):
+            stdout.write("Continuing in %i seconds\r" % i)
+            stdout.flush()
+            sleep(1)
+ 
+if __name__ == '__main__':
+
+    if len(argv[1:]) < 1:
+        usage()
+        exit(1)
+    oldnames = getoptions() # getoptions returns all non-option args
+
+    symlinkvimbug()
+  
+    force = 0
+    ignore = []
+    for i in range(len(oldnames)):
+        if not (isfile(oldnames[i]) or isdir(oldnames[i])):
+             warn('Ignoring %s: No such file or directory.' % oldnames[i])
+             ignore.append(i)
+    for i in ignore:
+        del oldnames[i];
+
+    if not oldnames:
+        giveup('No files to rename.')
+
+    newnames = edit(oldnames)
+    
+    dochange = 0
+    dontchange = 0
+    renamer = Renamer()
+    exists = ExistenceChecker()
+    renamer.existencechecker = exists
+    
+    for new, old in zip(newnames, oldnames):
+        if old != new:
+            renamer.add(old, new)
+            dochange += 1
+        else:
+            dontchange += 1
+
+    if dochange == 1: 
+        msg = '1 filename changes, '
+    else: 
+        msg = '%i filenames change, ' % dochange
+    if dontchange == 1: 
+        msg += '1 does not'
+    else: 
+        msg += '%i do not' % dontchange
+    print msg
+    
+    renamer.checkrenamings(force)
+    sequence = renamer.renamingsequence()
+
+    for i in sequence:
+        try:
+            print "moving %s -> %s " % (i.frm, i.to)
+            if force == 0 and exists.exists(i.to):
+                sched = ""
+                for i in sequence:
+                    sched += "\n%s -> %s" % (i.frm, i.to)
+                print "error detected. moving schedule was: %s " % sched
+                giveup("will not overwrite %s\n** RENAMING INTERRUPTED **" \
+                   % i.to)
+            rename(i.frm, expanduser(i.to))
+        except OSError, e:
+            sched = ""
+            for i in sequence:
+                sched += "\n%s -> %s" % (i.frm, i.to)
+            print "error detected. moving schedule was: %s" % sched
+            giveup("Could not rename %s to %s: %s\n** RENAMING INTERRUPTED **" \
+                % (i.frm, i.to, str(e)))
+          
+    exit(0)
+
+
+# vim: expandtab shiftwidth=4

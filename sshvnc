@@ -1,0 +1,53 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	sshvnc: Retrieve VNC password via ssh, then VNC into the machine
+#	Copyright (C) 2017-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+
+HOST="$1"
+if [ "$1" == "" ]; then
+	echo "$0 [Hostname]"
+	exit 1
+fi
+PASSWORD=`ssh "$HOST" 'cat .vncpwd' 2>/dev/null`
+if [ "$PASSWORD" == "" ]; then
+	echo "No .vncpwd found on host $HOST"
+	exit 1
+fi
+TMPFILE="${HOME}/tmp/.sshvnc.tmp.vnc"
+echo -n >"$TMPFILE"
+chmod 600 "$TMPFILE"
+
+TMPUID=`stat -c "%u" "$TMPFILE"`
+if [ "$TMPUID" != "$UID" ]; then
+	echo "Could not claim temp file $TEMPFILE (UID $TMPUID, expected $UID)"
+	exit 1
+fi
+
+cat >>"$TMPFILE" <<EOF 
+[Connection]
+Host=${HOST}
+Password=${PASSWORD}
+EOF
+
+# Oh my, Would you look at that nice race condition right there.
+vinagre -F "$TMPFILE" &
+sleep 5
+rm -f "$TMPFILE"

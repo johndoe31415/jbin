@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	reduce_image_quality: Rescale images to smaller versions and strip EXIF data
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import argparse
+import subprocess
+import shutil
+import tempfile
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-t", "--outtype", choices = [ "jpg", "png" ], default = "jpg", help = "Output file type to use. Defaults to %(default)s, can be any of %(choices)s.")
+parser.add_argument("-q", "--quality", metavar = "quality", type = int, default = 85, help = "For lossy compression, gives the quality factor in percent. Defaults to %(default)d%%, is ignored for lossless output formats.")
+parser.add_argument("-s", "--size", metavar = "geometry", type = str, default = "1920x1080", help = "Output geometry that files should get at maximum. Defaults to %(default)s.")
+parser.add_argument("--keep-meta", action = "store_true", help = "Do not strip metadata from files.")
+parser.add_argument("--backup", action = "store_true", help = "Create a backup of the original files.")
+parser.add_argument("infiles", metavar = "filename", type = str, nargs = "+", help = "Input file(s) to convert.")
+args = parser.parse_args(sys.argv[1:])
+
+for infilename in args.infiles:
+	if not os.path.isfile(infilename):
+		print("No such file: %s" % (infilename))
+		continue
+
+	outfilename = os.path.splitext(infilename)[0] + "." + args.outtype
+	if args.backup:
+		backfilename = infilename + ".bak"
+		if os.path.exists(backfilename):
+			print("Will not overwrite backup file %s, not converting %s." % (backfilename, infilename))
+			continue
+		shutil.copy(infilename, backfilename)
+
+	with tempfile.NamedTemporaryFile(prefix = "imgconvert_", suffix = "." + args.outtype) as tmpfile:
+		tmpfile.close()
+		cmd = [ "convert", "-quality", str(args.quality), "-resize", args.size ]
+		if not args.keep_meta:
+			cmd += [ "-strip" ]
+		cmd += [ infilename, tmpfile.name ]
+		print("%s -> %s" % (os.path.basename(infilename), os.path.basename(outfilename)))
+		subprocess.check_call(cmd)
+
+		os.unlink(infilename)
+		shutil.move(tmpfile.name, outfilename)

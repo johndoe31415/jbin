@@ -1,0 +1,39 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	gitpatches: Create a .tar.gz file that contains all patches on top of master
+#	Copyright (C) 2015-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+DATE=`/bin/date +'%Y_%m_%d_%H_%M_%S'`
+OUTDIR="patches_${DATE}"
+OUTFILE="patches_${DATE}.tar.gz"
+if [ -d "${OUTFILE}" ]; then
+	echo "Will not overwrite output directory ${OUTDIR}."
+	exit 1
+fi
+if [ -f "${OUTFILE}" ]; then
+	echo "Will not overwrite output file ${OUTFILE}."
+	exit 1
+fi
+
+mkdir "$OUTDIR"
+git format-patch -o "$OUTDIR" origin/master >/dev/null 2>&1
+git rev-parse origin/master >"${OUTDIR}/BASEREV"
+tar cfvz "$OUTFILE" "$OUTDIR"
+rm -fr "$OUTDIR"

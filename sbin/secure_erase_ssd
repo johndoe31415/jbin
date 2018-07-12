@@ -1,0 +1,49 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	secure_erase_disk: Perform a secure erase on a hard disk
+#	Copyright (C) 2017-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+if [ "$1" == "" ]; then
+	echo "$0 [device]"
+	exit 1
+fi
+
+WIPEDEV="$1"
+hdparm -I "$WIPEDEV" | grep "not\sfrozen" >/dev/null 2>&1
+if [ "$?" != "0" ]; then
+	echo "Device is in 'frozen' status and cannot be wiped currently."
+	echo "Please hot-replug the device."
+	exit 1
+fi
+
+echo "WARNING! You are about to wipe the disk ${WIPEDEV}."
+SIZE=`blockdev --getsize64 "${WIPEDEV}"`
+echo "$(($SIZE/1024/1024)) MiB = $(($SIZE/1024/1024/1024)) GiB of data will be wiped!"
+read -p "If you want to proceed, type all uppercase 'yes': " really
+if [ "$really" != "YES" ]; then
+	echo "Aborted."
+	exit 1
+fi
+
+echo "Setting password..."
+hdparm --user-master u --security-set-pass foobar "$WIPEDEV"
+echo "Wiping disk..."
+time hdparm --user-master u --security-erase foobar "$WIPEDEV"
+

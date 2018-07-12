@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	ssh-checkkeys: Check SSH keys against revoked variants
+#	Copyright (C) 2016-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import collections
+
+revoked_keys = {
+	"AAAAB3NzaC1yc2EAAAADAQABAAABAQDZK7dpZL8tTolP26Hnm7Z7NlaQRH4/w6eSJHy3yQUuULKAkMc7SeVX6DpA025tEcP32sAq1AWQToDebFUjGsnyUaRJF+jnX3DZ2D4wXvy7yQzKtQXiY/a6GZa7HGeyzgGayCYlEwic2hY/OPWz3/b+swtTETSy2JWJK0akh8ygdFfnBnsHDf9FflZdA4Gwk/nh4vHWKWDJdd1hbFRI67jCiU0TRqHo8yaIMIp1AM8/aMzW4Fi8CPYtLoimajXEgQFhEt/DCnFViXOQZT5wxkaVEDKp1hIesa1NUQISjYsPSMNlPm+tWZU65oNWR1+c7MAOjNzzt+4Ev2002M5iejBX": "joe@joequad",
+}
+
+homedir = os.getenv("HOME")
+authorized_keys_filename = homedir + "/.ssh/authorized_keys"
+id_rsa_filename = homedir + "/.ssh/id_rsa"
+id_ed25519_filename = homedir + "/.ssh/id_ed25519"
+
+if os.path.isfile(id_rsa_filename):
+	print("Warning: You're still using an ssh RSA keypair in %s. Consider switching to Ed25519." % (id_rsa_filename), file = sys.stderr)
+
+#if not os.path.isfile(id_ed25519_filename):
+#	print("Warning: You're not using an Ed25519 keypair. Consider creating one.", file = sys.stderr)
+
+if os.path.isfile(authorized_keys_filename):
+	keytype_counter = collections.Counter()
+	with open(authorized_keys_filename) as f:
+		for (lineno, line) in enumerate(f, 1):
+			line = line.rstrip("\r\n")
+			line = line.split()
+			if len(line) != 3:
+				continue
+			(keytype, key, description) = line
+			keytype_counter[keytype] += 1
+			if key in revoked_keys:
+				print("Warning: Revoked key \"%s\" found on line %d of %s. Remove it!" % (revoked_keys[key], lineno, authorized_keys_filename), file = sys.stderr)
+
+	for (keytype, count) in sorted(keytype_counter.items()):
+		if keytype != "ssh-ed25519":
+			print("Warning: %d keys of type %s are authorized to log into this account. Consider removing them." % (count, keytype), file = sys.stderr)
+

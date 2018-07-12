@@ -1,0 +1,11 @@
+[org/mate/terminal/keybindings]
+prev-tab='<Shift>Left'
+next-tab='<Shift>Right'
+new-tab='<Primary>n'
+
+[org/mate/terminal/profiles/default]
+foreground-color='#FFFFFFFFFFFF'
+palette='#000000000000:#CCCC00000000:#4E4D9A9A0605:#C4C3A0A00000:#34346564A4A3:#7575504F7B7B:#060598979A9A:#D3D3D7D6CFCF:#555457565352:#EFEF29282928:#8A89E2E23434:#FCFBE9E84F4F:#72729F9ECFCF:#ADAC7F7EA8A8:#3434E2E2E2E2:#EEEDEEEDECEB'
+use-theme-colors=false
+scrollback-unlimited=true
+background-color='#000000000000'

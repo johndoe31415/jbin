@@ -1,0 +1,90 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	expandrights: Expand the permissions given to the the user also to group/other
+#	Copyright (C) 2012-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import os
+import stat
+
+def syntax():
+	print("Usage: %s [(+-)go]" % (sys.argv[0]))
+	sys.exit(1)
+
+if len(sys.argv) != 2:
+	syntax()
+
+mode = sys.argv[1]
+if mode[0] not in [ "+", "-" ]:
+	syntax()
+
+expand_permissions = (mode[0] == "+")
+groupmod = "g" in mode[1:]
+othermod = "o" in mode[1:]
+
+def permissions_split(mode):
+	flags = mode >> (3 * 3)
+	umode = (mode & 0o700) >> (3 * 2)
+	gmode = (mode & 0o070) >> (3 * 1)
+	omode = (mode & 0o007) >> (3 * 0)
+	return (umode, gmode, omode, flags)
+
+def permissions_combine(umode, gmode, omode, flags):
+	umode = (umode & 0o7)
+	gmode = (gmode & 0o7)
+	omode = (omode & 0o7)
+	return (omode << (3 * 0)) | (gmode << (3 * 1)) | (umode << (3 * 2)) | (flags << (3 * 3))
+
+def expand(filename, expand_permissions, groupmod, othermod):
+	try:
+		statresult = os.stat(filename)
+	except FileNotFoundError:
+		# Broken symlink
+		return
+	mode = stat.S_IMODE(statresult.st_mode)
+	(umode, gmode, omode, flags) = permissions_split(mode)
+	assert(permissions_combine(umode, gmode, omode, flags) == mode)
+
+	add = umode & 0o5
+	if groupmod:
+		if expand_permissions:
+			gmode |= add
+		else:
+			gmode &= ~0o7
+
+	if othermod:
+		if expand_permissions:
+			omode |= add
+		else:
+			omode &= ~0o7
+
+	newmode = permissions_combine(umode, gmode, omode, flags)
+	if newmode != mode:
+		print("%s %o -> %o" % (filename, mode, newmode))
+		os.chmod(filename, newmode)
+
+for (dirname, subdirs, filenames) in os.walk("."):
+	for subdir in subdirs:
+		fullfilename = dirname + "/" + subdir
+		expand(fullfilename, expand_permissions, groupmod, othermod)
+
+	for filename in filenames:
+		fullfilename = dirname + "/" + filename
+		expand(fullfilename, expand_permissions, groupmod, othermod)

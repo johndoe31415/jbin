@@ -1,0 +1,61 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	kernel_build: Historize kernel config in git, then build it
+#	Copyright (C) 2015-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+KERNDIR="/usr/src/linux"
+CONFDIR="/usr/src/kernconfig"
+CPUCNT=`cat /proc/cpuinfo | grep "processor" | wc -l`
+	
+KERNEL_VERSION=`cat ${KERNDIR}/.config | grep "Kernel Configuration" | awk '{print $3}'`
+
+if [ ! -d "$KERNDIR" ]; then
+	echo "Kernel directory $KERNDIR not found."
+	exit 1
+fi
+
+if [ -d "$CONFDIR" ]; then
+	CONFFILE="${CONFDIR}/${HOSTNAME}-${KERNEL_VERSION}"
+	cd "$CONFDIR"
+	cp "${KERNDIR}/.config" "$CONFFILE"
+	git add "$CONFFILE"
+	git commit "$CONFFILE"
+else
+	echo "Configuration directory ${CONFDIR} does not exist, kernel config will not be historized."
+fi
+
+cd "$KERNDIR"
+make bzImage -j${CPUCNT}
+make modules -j${CPUCNT}
+make modules_install
+make install
+
+if [ -d "/var/lib/dkms" ]; then	
+	find /var/lib/dkms -mindepth 2 -maxdepth 2 -type d | cut -c 15- | while read DKMS_MODULE_VERSION; do
+		DKMS_MODULE=`echo "$DKMS_MODULE_VERSION" | awk -F '/' '{print $1}'`
+		DKMS_VERSION=`echo "$DKMS_MODULE_VERSION" | awk -F '/' '{print $2}'`
+		echo "Found DKMS module ${DKMS_MODULE} in version ${DKMS_VERSION}, trying to build for kernel ${KERNEL_VERSION}"
+		dkms remove "${DKMS_MODULE}/${DKMS_VERSION}" -k "${KERNEL_VERSION}"
+		dkms build -m "${DKMS_MODULE}/${DKMS_VERSION}" -k "${KERNEL_VERSION}"
+		dkms install -m "${DKMS_MODULE}/${DKMS_VERSION}" -k "${KERNEL_VERSION}"
+	done
+else
+	echo "DKMS directory doesn't exist, skipping building DKMS modules."
+fi

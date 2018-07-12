@@ -1,0 +1,189 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	profile.local: local login shell setup
+#	Copyright (C) 2009-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+JBIN_DIR=`dirname "$0"`
+
+# If we have vim as editor, export this
+if [ -x "/usr/bin/vim" ]; then
+	export EDITOR="/usr/bin/vim"
+fi
+
+
+# Set path options
+pathadd() {
+	if [ -d "$1" ]; then
+		if [ "$PATH" == "" ]; then
+			PATH="$1"
+		else
+			PATH="${PATH}:${1}"
+		fi
+	fi
+}
+
+PATH=""
+pathadd "${JBIN_DIR}"
+pathadd /usr/local/sbin
+pathadd /usr/local/bin
+pathadd /usr/sbin
+pathadd /usr/bin
+pathadd /sbin
+pathadd /bin
+if [ "$EUID" != "0" ] && [ "$USER" != "root" ]; then
+	pathadd /usr/local/games
+	pathadd /usr/games
+else
+	pathadd "${JBIN_DIR}/sbin"
+fi
+pathadd ${HOME}/bin
+export PATH
+
+
+# Determine hostname
+if [ -f /etc/hostname ]; then
+	hostname="`/bin/cat /etc/hostname`"
+elif [ -f /etc/conf.d/hostname ]; then
+	. /etc/conf.d/hostname
+	hostname="$HOSTNAME"
+else
+	hostname="unknown"
+fi
+
+
+# Determine current username
+if [ -x "/usr/bin/whoami" ]; then
+	current_user=`/usr/bin/whoami`
+elif [ "$USER" != "" ]; then
+	current_user="$USER"
+else
+	current_user="unknownusr"
+fi
+
+
+# Set color preferences
+color_red="\[\033[01;31m\]"
+color_green="\[\033[01;32m\]"
+color_blue="\[\033[01;34m\]"
+color_cyan="\[\033[01;36m\]"
+color_white="\[\033[00m\]"
+
+
+# Set prompt
+if [ "$current_user" == "root" ]; then
+	# Do not set PS1 for dumb terminals
+	if [ "$TERM" != "dumb"  ] && [ -n "$BASH" ]; then
+		export PS1="${color_cyan}${hostname}${color_white} ${color_red}[\w]: ${color_white}"
+	fi
+else
+	# Do not set PS1 for dumb terminals
+	if [ "$TERM" != "dumb"  ] && [ -n "$BASH" ]; then
+		export PS1="${color_cyan}${hostname}${color_white} ${color_blue}\u ${color_green}[\w]: ${color_white}"
+	fi
+fi
+
+
+# Switch terminal to 256 colors
+if [ "$TERM" == "xterm" ]; then
+	TERM="xterm-256color"
+	export TERM
+fi
+
+
+# Set restrictive umask (non-world/non-group)
+umask 0077
+
+
+# Enable bash completion
+[[ -f /etc/profile.d/bash_completion.sh ]] && source /etc/profile.d/bash_completion.sh
+
+
+# Set ls preferences
+TIMESTYLE="%d.%m.%Y %H:%M:%S"
+if [ "$current_user" == "root" ]; then
+	# root sees all files by default
+	alias ls="/bin/ls -h -l -p -A --color=auto --time-style=+\"  $TIMESTYLE\""
+else
+	# non-root
+	alias ls="/bin/ls -h -l -p --color=auto --time-style=+\"  $TIMESTYLE\""
+fi
+
+
+# Export local python path
+PYTHONPATH=""
+for PYVER in 2.6 2.7 3.0 3.1 3.2 3.3 3.4 3.5 3.6; do
+	for LIBDIR in lib lib64; do
+		DIRECTORY="${HOME}/.python/${LIBDIR}/python${PYVER}/site-packages"
+		if [ -d "$DIRECTORY" ]; then
+			if [ "$PYTHONPATH" == "" ]; then
+				PYTHONPATH="${DIRECTORY}"
+			else
+				PYTHONPATH="${PYTHONPATH}:${DIRECTORY}"
+			fi
+		fi
+	done
+done
+if [ "$PYTHONPATH" != "" ]; then
+	export PYTHONPATH
+else
+	unset PYTHONPATH
+fi
+
+
+# Set tabstops at 4, but only for dumb terminals (breaks scp otherwise)
+if [ "$TERM" != "dumb" ]; then
+	tabs -4
+fi
+
+
+# Aliases
+alias l="/bin/ls"
+alias lsl="/bin/ls --color=always -p -l --time-style=+\"  $TIMESTYLE\""
+alias lsa="/bin/ls --color=always -p -h -l -A --time-style=+\"  $TIMESTYLE\""
+alias date="/bin/date +\"$TIMESTYLE\""
+
+
+# Export locale
+DFL_LOCALE="de_DE.UTF-8"
+DFL_MSG_LOCALE="en_US.UTF-8"
+
+LC_MESSAGES="${DFL_MSG_LOCALE}"
+LANGUAGE="${DFL_MSG_LOCALE}"
+LC_LANG="${DFL_LOCALE}"
+LC_CTYPE="${DFL_LOCALE}"
+LC_NUMERIC="${DFL_LOCALE}"
+LC_TIME="${DFL_LOCALE}"
+LC_COLLATE="${DFL_LOCALE}"
+LC_MONETARY="${DFL_LOCALE}"
+LC_PAPER="${DFL_LOCALE}"
+LC_NAME="${DFL_LOCALE}"
+LC_ADDRESS="${DFL_LOCALE}"
+LC_TELEPHONE="${DFL_LOCALE}"
+LC_MEASUREMENT="${DFL_LOCALE}"
+LC_IDENTIFICATION="${DFL_LOCALE}"
+LC_ALL=""
+export LC_LANG LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT LC_IDENTIFICATION LANGUAGE
+
+# Check ssh keys
+which python3 >/dev/null 2>&1
+if [ "$?" == "0" ]; then
+	# Have Python3
+	ssh-checkkeys
+fi

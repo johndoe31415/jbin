@@ -1,0 +1,147 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	headergen: Auto-generate headers for C files
+#	Copyright (C) 2010-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import re
+
+if len(sys.argv) != 2:
+	print("%s [C-File]" % (sys.argv[0]))
+	sys.exit(1)
+
+delimiter = {
+	"start":	"/*************** AUTO GENERATED SECTION FOLLOWS ***************/",
+	"end":		"/***************  AUTO GENERATED SECTION ENDS   ***************/",
+}
+
+extensions = {
+	"c":	"h",
+	"cpp":	"hpp",
+	"cxx":	"hxx",
+}
+
+cfile = sys.argv[1]
+cfilesplit = cfile.split(".")
+extension = cfilesplit[-1]
+hfile = ".".join(cfilesplit[:-1] + [ extensions[extension] ])
+
+fncdef = re.compile("^(?:(?P<keyword_static>static)\s+)?(?:(?P<keyword_pure>PURE|CONST)\s+)?(?P<prototype>[a-zA-Z].*) {$")
+# (?:\s+(?P<attribute>__attribute__ .*))?
+def process_cfile(cfile):
+	prototypes = [ ]
+	for line in open(cfile, "r"):
+		line = line[ : -1]
+		result = fncdef.match(line)
+		if result is not None:
+			result = result.groupdict()
+			if result["keyword_static"] is not None:
+				# static function
+				continue
+			if result["keyword_pure"] is not None:
+				# PURE or CONST function
+				continue
+		
+			if ("__" in result["prototype"]) and not ("__attribute__" in result["prototype"]):
+				# Do not export this
+				continue
+
+			if result["prototype"].startswith("ISR("):
+				# Ingore ISRs
+				continue
+			
+			if result["prototype"].startswith("int main("):
+				# Ignore main function
+				continue
+			
+			if not ("(") in result["prototype"]:
+				# Structure declaration or similar, ignore
+				continue
+			
+			if result["prototype"].rstrip().endswith("="):
+				# Ignore array declarations
+				continue
+
+			prototypes.append("%s;" % (result["prototype"]))
+	return prototypes
+
+def fileexists(filename):
+	try:
+		f = open(filename, "r")
+		f.close()
+		return True
+	except IOError:
+		return False
+
+prototypes = process_cfile(cfile)
+if not fileexists(hfile):
+	f = open(hfile, "w")
+	hfiledef = "__" + os.path.basename(hfile).replace(".", "_").upper() + "__"
+	print("#ifndef %s" % (hfiledef), file = f)
+	print("#define %s" % (hfiledef), file = f)
+	print(file = f)
+	print(delimiter["start"], file = f)
+	for prototype in prototypes:
+		print(prototype, file = f)
+	print(delimiter["end"], file = f)
+	print(file = f)
+	print("#endif", file = f)
+	f.close()
+	print("Header file %s generated." % (hfile), file = sys.stderr)
+else:
+	prefix = [ ]
+	postfix = [ ]
+	state = "prefix"
+	delimiters = 0
+	for line in open(hfile, "r"):
+		line = line[ : -1]
+		if (state == "prefix") and (line == delimiter["start"]):
+			state = "block"
+			delimiters += 1
+		elif (state == "block") and (line == delimiter["end"]):
+			state = "postfix"
+			delimiters += 1
+		else:
+			if state == "prefix":
+				prefix.append(line)
+			elif state == "postfix":
+				postfix.append(line)
+
+	if delimiters == 2:
+		f = open(hfile, "w")
+		for line in prefix:
+			print(line, file = f)
+		print(delimiter["start"], file = f)
+		for prototype in prototypes:
+			print(prototype, file = f)
+		print(delimiter["end"], file = f)
+		for line in postfix:
+			print(line, file = f)
+		f.close()
+	else:
+		f = open(hfile, "a")
+		print(file = f)
+		print(delimiter["start"], file = f)
+		for prototype in prototypes:
+			print(prototype, file = f)
+		print(delimiter["end"], file = f)
+		f.close()
+		print("Header appended to %s." % (hfile), file = sys.stderr)

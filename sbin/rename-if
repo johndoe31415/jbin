@@ -1,0 +1,54 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import re
+import subprocess
+
+if len(sys.argv) != 3:
+	print("%s [old ifname] [new ifname]", file = sys.stderr)
+	sys.exit(1)
+
+(old_if, new_if) = sys.argv[1:]
+link_info = subprocess.check_output([ "ip", "-o", "link", "list", old_if ]).decode("ascii")
+mac_re = re.compile("link/ether (?P<mac>[a-f0-9]{2}:[a-f0-9]{2}:[a-f0-9]{2}:[a-f0-9]{2}:[a-f0-9]{2}:[a-f0-9]{2})")
+result = mac_re.search(link_info)
+if result is None:
+	raise Exception("Cannot determine MAC address from link info.")
+result = result.groupdict()
+mac = result["mac"]
+
+filename = "/etc/systemd/network/01-netif-%s.link" % (new_if)
+if os.path.isfile(filename):
+	raise Exception("Already exists: %s" % (filename))
+
+with open(filename, "w") as f:
+	print("[Match]", file = f)
+	print("MACAddress=%s" % (mac), file = f)
+	print(file = f)
+	print("[Link]", file = f)
+	print("Name=%s" % (new_if), file = f)
+
+subprocess.check_call(["ip", "link", "set", old_if, "down" ])
+subprocess.check_call(["ip", "link", "set", old_if, "name", new_if ])
+subprocess.check_call(["ip", "link", "set", new_if, "up" ])
+subprocess.check_call([ "update-initramfs", "-u" ])

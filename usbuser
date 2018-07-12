@@ -1,0 +1,41 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	usbuser: Give input on what config lines are needed to make a USB device user-accessible
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import re
+import subprocess
+
+regex = re.compile("Bus \d+ Device \d+: ID (?P<vendor>[0-9A-Fa-f]{4}):(?P<product>[0-9A-Fa-f]{4}) (?P<text>.*)")
+output = subprocess.check_output([ "lsusb" ])
+lines = output.decode().split("\n")
+for line in lines:
+	line = line.rstrip()
+	match = regex.fullmatch(line)
+	if match is not None:
+		match = match.groupdict()
+		match["vendor"] = match["vendor"].lower()
+		match["product"] = match["product"].lower()
+		print("# ID %s:%s -- %s" % (match["vendor"], match["product"], match["text"]))
+		print("ATTRS{idVendor}==\"%s\", ATTRS{idProduct}==\"%s\", MODE=\"0660\", GROUP=\"users\"" % (match["vendor"], match["product"]))
+		print()
+
+print("cat >>/etc/udev/rules.d/99-user.rules")
+print("udevadm control --reload && udevadm trigger")

@@ -1,0 +1,83 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	chrootmnt: Bind-mount /dev, /proc, /sys, then chroot into a system
+#	Copyright (C) 2015-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+
+ROOTDIR="$1"
+if [ ! -d "$ROOTDIR" ]; then
+	echo "Root dir '$ROOTDIR' doesn't exist."
+	exit 1
+fi
+
+if [ ! -d "${ROOTDIR}/dev" ]; then
+	echo "Root dir has no dev/ subdirectory."
+	exit 1
+fi
+
+if [ ! -d "${ROOTDIR}/sys" ]; then
+	echo "Root dir has no sys/ subdirectory."
+	exit 1
+fi
+
+if [ ! -d "${ROOTDIR}/proc" ]; then
+	echo "Root dir has no proc/ subdirectory."
+	exit 1
+fi
+
+if [ ! -f "${ROOTDIR}/bin/true" ]; then
+	echo "Root dir has no /bin/true executable."
+	exit 1
+fi
+
+if [ ! -f "${ROOTDIR}/proc/uptime" ]; then
+	MOUNT="1"
+else
+	MOUNT="0"
+fi
+
+ELFCLASS=`readelf -h "${ROOTDIR}/bin/true" | grep "Class:" | awk '{print $2}'`
+if [ "$ELFCLASS" == "ELF64" ]; then
+	BITSIZE="64"
+elif [ "$ELFCLASS" == "ELF32" ]; then
+	BITSIZE="32"
+else
+	echo "Cannot determine if 32 or 64 bit system from /bin/true."
+	exit 1
+fi
+
+if [ "$MOUNT" == "1" ]; then
+	mount --bind /proc "${ROOTDIR}/proc"
+	mount --bind /dev "${ROOTDIR}/dev"
+	mount --bind /sys "${ROOTDIR}/sys"
+fi
+
+if [ "$BITSIZE" == "32" ]; then
+	linux32 chroot "${ROOTDIR}"
+else
+	chroot "${ROOTDIR}"
+fi
+
+if [ "$MOUNT" == "1" ]; then
+	umount "${ROOTDIR}/sys"
+	umount "${ROOTDIR}/dev"
+	umount "${ROOTDIR}/proc"
+fi
+

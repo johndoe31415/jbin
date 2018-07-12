@@ -1,0 +1,51 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	wol: Retrieve MAC address of host via DNS, then wakeonlan machine
+#	Copyright (C) 2014-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+if [ "$1" == "" ]; then
+	echo "$0 [Hostname]"
+	echo
+	echo "Retrieves the MAC-address of the hostname from the DNS TXT record and performs"
+	echo "wakeonlan."
+	exit 1
+fi
+
+which wakeonlan >/dev/null 2>&1
+if [ "$?" != "0" ]; then
+	echo "wakeonlan is not installed."
+	exit 1
+fi
+
+IP=`host -t A "$1"  | grep ' has address ' | head -n 1 | awk -F ' has address ' '{print $2}'`
+if [ "$IP" == "" ]; then
+	echo "Error retrieving IP for $1"
+	exit 1
+fi
+
+MAC=`host -t TXT "$1"  | grep 'descriptive text "MAC ' | awk -F 'MAC ' '{print $2}' | awk -F '"' '{print $1}'`
+if [ "$MAC" == "" ]; then
+	echo "Error retrieving MAC for $1"
+	exit 1
+fi
+
+echo "Waking IP $IP with MAC $MAC"
+wakeonlan -i "$IP" "$MAC" >/dev/null 2>&1
+wakeonlan -i "255.255.255.255" "$MAC" >/dev/null 2>&1

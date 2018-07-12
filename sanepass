@@ -1,0 +1,59 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	sanepass: Create fixed-entropy passwords with a nice alphabet
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import string
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+filtered_alphabet = set("".join([
+	"1liI",
+	"B8",
+	"O0o",
+	"UV",
+	"uv",
+	"2Z",
+	"6G",
+]))
+source_alphabet = {
+	"all":		string.ascii_uppercase + string.ascii_lowercase + string.digits,
+	"phone":	string.ascii_lowercase,
+}
+
+parser = FriendlyArgumentParser()
+parser.add_argument("-a", "--alphabet", choices = [ "all", "phone" ], default = "all", help = "Specifies the input alphabet to use. Defaults to %(default)s.")
+parser.add_argument("-b", "--entropy-bits", metavar = "bits", type = int, default = 128, help = "Bits of entropy the password should contain. Defaults to %(default)d bit.")
+#parser.add_argument("-l", "--min-length", type = int, help = "Minimum length of characters the password must have.")
+args = parser.parse_args(sys.argv[1:])
+
+bytecnt = (args.entropy_bits + 7) // 8
+passphrase = os.urandom(bytecnt)
+intphrase = int.from_bytes(passphrase, "little")
+
+alphabet = source_alphabet[args.alphabet]
+alphabet = list(set(alphabet) - filtered_alphabet)
+decoded = ""
+while intphrase > 0:
+	(intphrase, nextchar) = divmod(intphrase, len(alphabet))
+	nextchar = alphabet[nextchar]
+	decoded += nextchar
+print(decoded)
