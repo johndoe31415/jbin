@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	b64: Update the whole collection system-wide
 #	Copyright (C) 2014-2018 Johannes Bauer
@@ -23,7 +23,6 @@
 if [ "$1" == "--insecure" ]; then
 	export GIT_SSL_NO_VERIFY=true
 fi
-JBIN_DIR=`dirname "$0"`
-cd "$JBIN_DIR"
+cd /usr/jbin
 git pull
 expandrights +go
