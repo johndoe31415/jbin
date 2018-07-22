@@ -147,7 +147,7 @@ else
 fi
 
 
-# Set tabstops at 4, but only for dumb terminals (breaks scp otherwise)
+# Set tabstops at 4, but only for non-dumb terminals (breaks scp otherwise)
 if [ "$TERM" != "dumb" ]; then
 	tabs -4
 fi
