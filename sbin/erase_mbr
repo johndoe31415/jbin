@@ -1,0 +1,52 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	erasembr: Erase the first and last 128 MiB of a block device
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+
+def get_devsize(devname):
+	with open(devname, "rb") as f:
+		f.seek(0, os.SEEK_END)
+		return f.tell()
+
+if len(sys.argv) != 2:
+	print("%s [device name]" % (sys.argv[0]))
+	print()
+	print("Erases the first and last 128 MiB of a given device, erasing all MBR/GPT.")
+	sys.exit(1)
+
+devname = sys.argv[1]
+devsize = get_devsize(devname)
+print("You are about to DESTROY ALL DATA on %s." % (devname))
+print("Device size: %.0f GB = %.2f TB" % (devsize / 1e9, devsize / 1e12))
+sure = input("Are you sure (type 'YES'): ")
+if sure != "YES":
+	print("Aborted.")
+	sys.exit(1)
+
+with open(devname, "wb") as f:
+	for i in range(128):
+		f.write(bytes(1024 * 1024))
+	f.seek(devsize - 128 * 1024 * 1024)
+	for i in range(128):
+		f.write(bytes(1024 * 1024))
+print("Deleted MBR/GPT.")
