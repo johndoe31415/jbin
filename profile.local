@@ -54,6 +54,7 @@ else
 	pathadd "${JBIN_DIR}/sbin"
 fi
 pathadd ${HOME}/bin
+pathadd ${HOME}/.local/bin
 export PATH
 
 
