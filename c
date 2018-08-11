@@ -501,7 +501,7 @@ def randprime(maxval) -> FncDescription(category = "Prime numbers"):
 		if isprime(p):
 			return p
 
-def randprimebits(bits) -> FncDescription(category = "Prime numbers"):
+def randprimebits(bits, both_msb = False) -> FncDescription(category = "Prime numbers"):
 	"""\
 	Generates a random prime number with 'bits' bit, i.e. from within the range
 	of [ 2 ^ (bits - 1) + 1; (2 ^ bits) - 1 ]"""
@@ -509,6 +509,9 @@ def randprimebits(bits) -> FncDescription(category = "Prime numbers"):
 	assert(bits >= 2)
 	while True:
 		p = randintbits(bits) | 0x01
+		if both_msb:
+			# Also set the second highest bit
+			p |= (1 << (bits - 2))
 		if isprime(p):
 			assert(p.bit_length() == bits)
 			return p
@@ -530,7 +533,7 @@ def randsafeprimebits(bits) -> FncDescription(category = "Prime numbers"):
 
 __RSAParams = collections.namedtuple("RSAParams", [ "p", "q", "n", "phin", "e", "d", "gcdp1q1" ])
 
-def rsagen(fixedp = None, fixedq = None, bitlen = 64, e = 65537, strict = True, safe = True) -> FncDescription(category = "Cryptography"):
+def rsagen(p = None, q = None, bits = 64, e = 65537, strict = True, safe = True) -> FncDescription(category = "Cryptography"):
 	"""\
 	Creates RSA parameters in with p and q primes may be pre-given or a
 	bitlength of the prime numbers may be given. In strict mode (default on) p
@@ -538,38 +541,42 @@ def rsagen(fixedp = None, fixedq = None, bitlen = 64, e = 65537, strict = True, 
 	also on) the greatest common divisor of (p - 1) and (q - 1) must be equal
 	to 2."""
 
-	if (fixedp is not None) and (strict) and (not isprime(fixedp)):
+	if (p is not None) and (strict) and (not isprime(p)):
 		raise Exception("Strict mode is active, p was given but it is not prime.")
-	if (fixedq is not None) and (strict) and (not isprime(fixedq)):
+	if (q is not None) and (strict) and (not isprime(q)):
 		raise Exception("Strict mode is active, q was given but it is not prime.")
 
 	for tries in range(1000):
-		if fixedp is None:
-			p = randprimebits(bitlen // 2)
+		if p is None:
+			chosen_p = randprimebits(bits // 2, both_msb = True)
 		else:
-			p = fixedp
+			chosen_p = p
 
-		if fixedq is None:
-			q = randprimebits(bitlen - p.bit_length())
+		if q is None:
+			chosen_q = randprimebits(bits - chosen_p.bit_length(), both_msb = True)
 		else:
-			q = fixedq
+			chosen_q = q
 
-		n = p * q
-		phin = (p - 1) * (q - 1)
-		if (fixedp is None) and (fixedq is None) and (n.bit_length() != bitlen):
+		if strict and (p is None) and (q is None) and (chosen_q == chosen_p):
 			continue
+
+		n = chosen_p * chosen_q
+		phin = (chosen_p - 1) * (chosen_q - 1)
 		if gcd(phin, e) != 1:
-			# No RSA parameters found with this P/Q combination, try again
+			# No RSA parameters found with this p/q combination, try again
 			continue
 
 		d = modinv(e, phin)
-		gcdp1q1 = gcd(p - 1, q - 1)
+		gcdp1q1 = gcd(chosen_p - 1, chosen_q - 1)
 		if safe and (gcdp1q1 != 2):
 			continue
 		break
 	else:
-		raise Exception("With phi(n) = %d and e = %d no RSA generation was possible with reasonable effort." % (phin, e))
-	return __RSAParams(p, q, n, phin, e, d, gcdp1q1)
+		if safe:
+			raise Exception("With given constraints, no RSA generation was possible with reasonable effort. Try deactivating safe mode.")
+		else:
+			raise Exception("With given constraints, no RSA generation was possible with reasonable effort.")
+	return __RSAParams(chosen_p, chosen_q, n, phin, e, d, gcdp1q1)
 
 def rsa2der(rsaparams) -> FncDescription(category = "Cryptography", imports = [ "pyasn1" ]):
 	"""\
