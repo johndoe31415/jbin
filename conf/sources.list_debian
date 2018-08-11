@@ -1,0 +1,15 @@
+# 7 wheezy
+# 8 jessie
+# 9 stretch
+# ---
+# 10 buster
+# 11 bullseye
+
+deb http://ftp.de.debian.org/debian/ stretch main
+deb-src http://ftp.de.debian.org/debian/ stretch main
+
+deb http://security.debian.org/ stretch/updates main
+deb-src http://security.debian.org/ stretch/updates main
+
+deb http://ftp.de.debian.org/debian/ stretch-updates main
+deb-src http://ftp.de.debian.org/debian/ stretch-updates main
