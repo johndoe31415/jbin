@@ -1,0 +1,4 @@
+#crypt-root UUID=56b288eb-9cb8-4f6d-961b-56eabcda5939 none luks,tries=99
+
+crypt-root UUID=56b288eb-9cb8-4f6d-961b-56eabcda5939 crypt_disks luks,tries=99,initramfs,keyscript=decrypt_keyctl
+crypt-home UUID=770eefa2-83e1-44b8-b4c6-896fa1162341 crypt_disks luks,tries=99,initramfs,keyscript=decrypt_keyctl

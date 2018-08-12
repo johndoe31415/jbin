@@ -1,0 +1,6 @@
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+UUID=4c4bead7-91a3-4cd1-afa6-de08902cc56c	/boot		ext4	noatime					0 0
+/dev/mapper/crypt-root			/		ext4	errors=remount-ro,noatime			0 0
+/dev/mapper/crypt-home			/home		ext4	noatime					0 0
+
+# vim: set ts=10:
