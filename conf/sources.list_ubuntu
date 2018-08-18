@@ -1,6 +1,10 @@
 # 17.10 artful
 # 18.04 bionic
 
+# hostname prefix
+# 	old 		old-releases
+# 	current		de.archive
+
 deb http://de.archive.ubuntu.com/ubuntu/ bionic main restricted
 deb http://de.archive.ubuntu.com/ubuntu/ bionic multiverse
 deb http://de.archive.ubuntu.com/ubuntu/ bionic universe
