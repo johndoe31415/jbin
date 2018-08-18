@@ -1,6 +1,6 @@
 #!/bin/bash
 #	jbin - Joe's miscellaneous scripts, tools and configs
-#	gitpatches: Create a .tar.gz file that contains all patches on top of master
+#	git-patches: Create a .tar.gz file that contains all patches on top of master
 #	Copyright (C) 2015-2018 Johannes Bauer
 #
 #	This file is part of jbin.

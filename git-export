@@ -1,6 +1,6 @@
 #!/bin/bash
 #	jbin - Joe's miscellaneous scripts, tools and configs
-#	gtiexport: Export a .tar.gz file with an export of the master branch
+#	git-export: Export a .tar.gz file with an export of the master branch
 #	Copyright (C) 2013-2018 Johannes Bauer
 #
 #	This file is part of jbin.
@@ -19,7 +19,6 @@
 #	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
-
 
 BASE=`basename "$PWD"`
 EXPORTNAME="${BASE}.tar.gz"
