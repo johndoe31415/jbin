@@ -1,0 +1,36 @@
+#!/bin/bash -e
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	git-edit: Edit the latest commit, allowing e.g. to unstage unwanted files
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+INDEX=`git diff-index HEAD | wc -l`
+if [ "$INDEX" != "0" ]; then
+	echo "There are staged items in the index. Commit or stash them first."
+	exit 1
+fi
+
+git log --format='%B' --max-count=1 HEAD >/tmp/last_commit_msg
+
+git reset --soft HEAD^
+echo "Make your changes and close shell to commence."
+echo "=============================================="
+bash
+
+git commit -F /tmp/last_commit_msg
