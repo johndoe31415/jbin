@@ -516,6 +516,15 @@ def randprimebits(bits, both_msb = False) -> FncDescription(category = "Prime nu
 			assert(p.bit_length() == bits)
 			return p
 
+def randprimebits_x_mod_y(bits, x, y, both_msb = False) -> FncDescription(category = "Prime numbers"):
+	"""\
+	Generates a random prime number with 'bits' bit, i.e. from within the range
+	of [ 2 ^ (bits - 1) + 1; (2 ^ bits) - 1 ] that has the value x modulo y."""
+	while True:
+		p = randprimebits(bits = bits, both_msb = both_msb)
+		if (p % y) == x:
+			return p
+
 def randsafeprimebits(bits) -> FncDescription(category = "Prime numbers"):
 	"""\
 	Generates a random safe prime number with 'bits' bit, i.e. from within the
