@@ -25,7 +25,10 @@ import re
 import subprocess
 
 if len(sys.argv) != 3:
-	print("%s [old ifname] [new ifname]", file = sys.stderr)
+	print("%s [old ifname] [new ifname]" % (sys.argv[0]), file = sys.stderr)
+	print(file = sys.stderr)
+	print("Renames a network interface from its old name to a new one.", file = sys.stderr)
+	print("Creates systemd rules to make the change permanent.", file = sys.stderr)
 	sys.exit(1)
 
 (old_if, new_if) = sys.argv[1:]
