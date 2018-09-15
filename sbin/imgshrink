@@ -1,0 +1,90 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	imgshrink: Shrink an ext4 partition inside a dd disk image
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import json
+import subprocess
+
+if len(sys.argv) != 3:
+	print("%s [file name] [partition number]" % (sys.argv[0]), file = sys.stderr)
+	print(file = sys.stderr)
+	print("Shrinks the parition number of the image file name to its minimal size.", file = sys.stderr)
+	print("File system must be ext4. Useful when the original image is created e.g.", file = sys.stderr)
+	print("for a 8 GiB device but most of the space is actually empty, so it would", file = sys.stderr)
+	print("also fit a smaller device (if only properly sized).", file = sys.stderr)
+	print(file = sys.stderr)
+	print("usage e.g.: %s 2018-09-15-debian-lite.img 2" % (sys.argv[0]), file = sys.stderr)
+	sys.exit(1)
+
+devname = sys.argv[1]
+partno = int(sys.argv[2])
+if partno < 1:
+	print("Partition number must start with 1.")
+	sys.exit(1)
+
+partition_table = json.loads(subprocess.check_output([ "sfdisk", "-J", devname ]))["partitiontable"]
+
+partition = partition_table["partitions"][partno - 1]
+print("You are about to shrink partition %d of %s." % (partno, devname))
+print("Partition starts: Sector %d (%.1f MiB)" % (partition["start"], partition["start"] * 512 / 1024 / 1024))
+print("Partition size  : %d sectors (%.1f MiB)" % (partition["size"], partition["size"] * 512 / 1024 / 1024))
+sure = input("Are you sure (type 'YES'): ")
+if sure != "YES":
+	print("Aborted.")
+	sys.exit(1)
+
+lodev = subprocess.check_output([ "losetup", "-f" ]).decode("ascii").rstrip("\r\n")
+
+subprocess.check_call([ "losetup", "-o", str(partition["start"] * 512), lodev, devname ])
+try:
+	# Check the filesystem and resize
+	subprocess.check_call([ "e2fsck", "-f", lodev ])
+	subprocess.check_call([ "tune2fs", "-m", "0", "-r", "0", lodev ])
+	subprocess.check_call([ "resize2fs", "-f", "-M", lodev ])
+
+	# Determine new size
+	dump_out = subprocess.check_output([ "dumpe2fs", lodev ]).decode("ascii").split("\n")
+	blocksize = None
+	blockcnt = None
+	for line in dump_out:
+		if line.startswith("Block size:"):
+			blocksize = int(line[11:])
+		elif line.startswith("Block count:"):
+			blockcnt = int(line[12:])
+	if (blocksize is None) or (blockcnt is None):
+		raise Exception("Could not determine new disk size.")
+
+	sector_size = (blockcnt * blocksize + 511) // 512
+	print("After resizing, device has %d blocks of %d bytes each, %.1f MiB total (%d sectors)." % (blockcnt, blocksize, blockcnt * blocksize / 1024 / 1024, sector_size))
+
+	# TODO: Ideally would want to use sfdisk for resizing here as well, but ran
+	# into this issue: https://github.com/karelzak/util-linux/issues/693
+	fdisk_cmds = [ "d", str(partno), "n", "p", str(partno), str(partition["start"]), str(partition["start"] + sector_size - 1), "w", "q" ]
+	fdisk_input = ("\n".join(fdisk_cmds) + "\n").encode("ascii")
+	subprocess.check_output([ "fdisk", devname ], input = fdisk_input)
+finally:
+	subprocess.check_call([ "losetup", "-d", lodev ])
+
+total_size = (partition["start"] + sector_size) * 512
+total_size_mib = (total_size + (1024 * 1024 - 1)) // 1024 // 1024
+print("If this was the last partition, you can now: dd if=%s bs=1M count=%d of=X" % (devname, total_size_mib))
