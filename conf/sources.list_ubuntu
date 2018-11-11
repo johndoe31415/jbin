@@ -1,20 +1,22 @@
 # 17.10 artful
 # 18.04 bionic
+# 18.10 cosmic
+# 19.04 disco
 
 # hostname prefix
 # 	old 		old-releases
-# 	current		de.archive
+# 	current		ftp.halifax.rwth-aachen.de
 
-deb http://de.archive.ubuntu.com/ubuntu/ bionic main restricted
-deb http://de.archive.ubuntu.com/ubuntu/ bionic multiverse
-deb http://de.archive.ubuntu.com/ubuntu/ bionic universe
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic main restricted
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic multiverse
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic universe
 
-deb http://de.archive.ubuntu.com/ubuntu/ bionic-updates main restricted
-deb http://de.archive.ubuntu.com/ubuntu/ bionic-updates multiverse
-deb http://de.archive.ubuntu.com/ubuntu/ bionic-updates universe
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic-updates main restricted
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic-updates multiverse
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic-updates universe
 
-deb http://security.ubuntu.com/ubuntu bionic-security main restricted
-deb http://security.ubuntu.com/ubuntu bionic-security multiverse
-deb http://security.ubuntu.com/ubuntu bionic-security universe
+deb http://security.ubuntu.com/ubuntu cosmic-security main restricted
+deb http://security.ubuntu.com/ubuntu cosmic-security multiverse
+deb http://security.ubuntu.com/ubuntu cosmic-security universe
 
-deb http://de.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic-backports main restricted universe multiverse
