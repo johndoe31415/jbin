@@ -10,6 +10,7 @@ passwd the first time around). It's probably not very useful for anyone else.
 ## debootstrap checklist
   * fdisk /boot partition
   * debootstrap cosmic subdir http://ftp.halifax.rwth-aachen.de/ubuntu/
+  * chmod 000 /etc/update-motd.d/10-help-text 
   * apt-get install acl apt-file bzip2 convmv gnupg grub2 hdparm hexedit inetutils-tools kbd less linux-image-generic lm-sensors locales lshw lsof lzma man mlocate nano openssh-client openssh-server p7zip-full pciutils psmisc pwgen recode rsync screen sqlite3 unzip usbutils vim xz-utils net-tools
   * fstab / crypttab / hostname
   * passwd
