@@ -23,6 +23,7 @@
 if [ "$1" == "--insecure" ]; then
 	export GIT_SSL_NO_VERIFY=true
 fi
+chmod 755 /usr/jbin
 cd /usr/jbin
 git pull
 expandrights +go
