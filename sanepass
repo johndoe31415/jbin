@@ -40,6 +40,7 @@ source_alphabet = {
 }
 
 parser = FriendlyArgumentParser()
+parser.add_argument("-n", "--no-filter-ambiguous", action = "store_true", help = "Do not filter characters that could be ambiguous, such as 1/l/I or O/0, from the passwords.")
 parser.add_argument("-a", "--alphabet", choices = [ "all", "phone" ], default = "all", help = "Specifies the input alphabet to use. Defaults to %(default)s.")
 parser.add_argument("-b", "--entropy-bits", metavar = "bits", type = int, default = 128, help = "Bits of entropy the password should contain. Defaults to %(default)d bit.")
 #parser.add_argument("-l", "--min-length", type = int, help = "Minimum length of characters the password must have.")
@@ -50,7 +51,10 @@ passphrase = os.urandom(bytecnt)
 intphrase = int.from_bytes(passphrase, "little")
 
 alphabet = source_alphabet[args.alphabet]
-alphabet = list(set(alphabet) - filtered_alphabet)
+alphabet = set(alphabet)
+if not args.no_filter_ambiguous:
+	alphabet -= filtered_alphabet
+alphabet = list(alphabet)
 decoded = ""
 while intphrase > 0:
 	(intphrase, nextchar) = divmod(intphrase, len(alphabet))
