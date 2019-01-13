@@ -45,10 +45,10 @@ parser = FriendlyArgumentParser()
 parser.add_argument("-n", "--no-filter-ambiguous", action = "store_true", help = "Do not filter characters that could be ambiguous, such as 1/l/I or O/0, from the passwords.")
 parser.add_argument("-a", "--alphabet", choices = [ "all", "chars", "phone" ], default = "all", help = "Specifies the input alphabet to use. Defaults to %(default)s.")
 parser.add_argument("-c", "--consecutive-filter", choices = [ "lalala", "qwertz" ], help = "Character alphabets can vary according to the given rules, for example passphrases can be generated that generate only consonant/vovel combinations ('lalala') or avoid thick finger combinations (for typing on a smart phone).")
-parser.add_argument("-b", "--entropy-bits", metavar = "bits", type = int, default = 128, help = "Bits of entropy the password should contain. Defaults to %(default)d bit.")
 parser.add_argument("--thick-finger-distance", metavar = "keycnt", type = float, default = 2, help = "Euclidian distance between two keys that has to minimally given to pass the 'thick finger test'. Defaults to %(default).1f")
 parser.add_argument("-v", "--verbose", action = "store_true", help = "Increase output verbosity.")
 #parser.add_argument("-l", "--min-length", type = int, help = "Minimum length of characters the password must have.")
+parser.add_argument("entropy_bits", metavar = "bits", type = int, nargs = "?", default = 128, help = "Bits of entropy the password should contain. Defaults to %(default)d bit.")
 args = parser.parse_args(sys.argv[1:])
 
 bytecnt = (args.entropy_bits + 7) // 8
@@ -113,6 +113,7 @@ alphabet = lalphabet
 current_alphabet = alphabet
 
 if args.verbose:
+	print("Used alphabet: %s" % ("".join(sorted(lalphabet))))
 	for (char, follow_alphabet) in sorted(next_alphabet.items()):
 		print("%s: %s" % (char, "".join(sorted(follow_alphabet))))
 
