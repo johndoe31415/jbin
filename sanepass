@@ -23,6 +23,7 @@
 import os
 import sys
 import string
+import math
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 filtered_alphabet = set("".join([
@@ -36,13 +37,17 @@ filtered_alphabet = set("".join([
 ]))
 source_alphabet = {
 	"all":		string.ascii_uppercase + string.ascii_lowercase + string.digits,
+	"chars":	string.ascii_uppercase + string.ascii_lowercase,
 	"phone":	string.ascii_lowercase,
 }
 
 parser = FriendlyArgumentParser()
 parser.add_argument("-n", "--no-filter-ambiguous", action = "store_true", help = "Do not filter characters that could be ambiguous, such as 1/l/I or O/0, from the passwords.")
-parser.add_argument("-a", "--alphabet", choices = [ "all", "phone" ], default = "all", help = "Specifies the input alphabet to use. Defaults to %(default)s.")
+parser.add_argument("-a", "--alphabet", choices = [ "all", "chars", "phone" ], default = "all", help = "Specifies the input alphabet to use. Defaults to %(default)s.")
+parser.add_argument("-c", "--consecutive-filter", choices = [ "lalala", "qwertz" ], help = "Character alphabets can vary according to the given rules, for example passphrases can be generated that generate only consonant/vovel combinations ('lalala') or avoid thick finger combinations (for typing on a smart phone).")
 parser.add_argument("-b", "--entropy-bits", metavar = "bits", type = int, default = 128, help = "Bits of entropy the password should contain. Defaults to %(default)d bit.")
+parser.add_argument("--thick-finger-distance", metavar = "keycnt", type = float, default = 2, help = "Euclidian distance between two keys that has to minimally given to pass the 'thick finger test'. Defaults to %(default).1f")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Increase output verbosity.")
 #parser.add_argument("-l", "--min-length", type = int, help = "Minimum length of characters the password must have.")
 args = parser.parse_args(sys.argv[1:])
 
@@ -54,10 +59,72 @@ alphabet = source_alphabet[args.alphabet]
 alphabet = set(alphabet)
 if not args.no_filter_ambiguous:
 	alphabet -= filtered_alphabet
-alphabet = list(alphabet)
+lalphabet = list(alphabet)
+
+if args.consecutive_filter is None:
+	next_alphabet = { char: lalphabet for char in alphabet }
+elif args.consecutive_filter == "lalala":
+	consonants = [ char for char in alphabet if char.lower() in "bcdfghjklmnpqrstvwxyz" ]
+	vovels = [ char for char in alphabet if char.lower() in "aeiou" ]
+	rest = [ char for char in alphabet if ((char not in consonants) and (char not in vovels)) ]
+	vovels_and_rest = vovels + rest
+
+	next_alphabet = { }
+	for char in alphabet:
+		if char in consonants:
+			next_alphabet[char] = vovels_and_rest
+		else:
+			next_alphabet[char] = consonants
+elif args.consecutive_filter == "qwertz":
+	keyboard_rows = [
+		(0, "1234567890"),
+		(0.5, "qwertzuiop"),
+		(0.8, "asdfghjkl"),
+		(1.1, "yxcvbnm"),
+	]
+	ignored_chars = set(alphabet)
+	coordinates = { }
+	for (y, (x_offset, row)) in enumerate(keyboard_rows):
+		for (charno, char) in enumerate(row):
+			x = x_offset + charno
+			if char in alphabet:
+				coordinates[char] = (x, y)
+				ignored_chars -= set([ char ])
+			if char.upper() in alphabet:
+				coordinates[char.upper()] = (x, y)
+				ignored_chars -= set([ char.upper() ])
+	ignored_chars = list(ignored_chars)
+
+	next_alphabet = { }
+	for char in alphabet:
+		if char in coordinates:
+			(x, y) = coordinates[char]
+			next_alphabet[char] = list(ignored_chars)
+			for (other_char, (other_x, other_y)) in coordinates.items():
+				dist = math.sqrt((x - other_x) ** 2 + (y - other_y) ** 2)
+				if dist >= args.thick_finger_distance:
+					next_alphabet[char].append(other_char)
+		else:
+			next_alphabet[char] = lalphabet
+else:
+	raise NotImplementedError(args.consecutive_filter)
+
+alphabet = lalphabet
+current_alphabet = alphabet
+
+if args.verbose:
+	for (char, follow_alphabet) in sorted(next_alphabet.items()):
+		print("%s: %s" % (char, "".join(sorted(follow_alphabet))))
+
+for (char, follow_alphabet) in next_alphabet.items():
+	if len(follow_alphabet) < 2:
+		print("There are only %d characters (\"%s\") that can follow '%s', this leads to uncreatable passphrases. Aborting." % (len(follow_alphabet), "".join(sorted(follow_alphabet)), char))
+		sys.exit(1)
+
 decoded = ""
 while intphrase > 0:
-	(intphrase, nextchar) = divmod(intphrase, len(alphabet))
-	nextchar = alphabet[nextchar]
+	(intphrase, nextchar) = divmod(intphrase, len(current_alphabet))
+	nextchar = current_alphabet[nextchar]
+	current_alphabet = next_alphabet[nextchar]
 	decoded += nextchar
 print(decoded)
