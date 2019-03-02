@@ -29,6 +29,9 @@ revoked_keys = {
 }
 
 homedir = os.getenv("HOME")
+if homedir is None:
+	print("$HOME is not set, cannot check ssh keys.", file = sys.stderr)
+	sys.exit(1)
 authorized_keys_filename = homedir + "/.ssh/authorized_keys"
 id_rsa_filename = homedir + "/.ssh/id_rsa"
 id_ed25519_filename = homedir + "/.ssh/id_ed25519"
