@@ -28,7 +28,14 @@ import base64
 linelen_bytes = 3 * 16		# Must be multiple of 3 bytes
 blocklen_bytes = linelen_bytes * 1024
 
-indata = sys.stdin.buffer.read(blocklen_bytes)
+if len(sys.argv) >= 2:
+	# Read from filename
+	filename = sys.argv[1]
+	infile = open(filename, "rb")
+else:
+	# Read from stdin
+	infile = sys.stdin.buffer
+indata = infile.read(blocklen_bytes)
 decode = b"------- BEGIN BASE64 -------" in indata
 
 if decode:
@@ -67,7 +74,7 @@ if decode:
 						total_len += len(decoded_data)
 						sys.stdout.buffer.write(decoded_data)
 		
-		newdata = sys.stdin.buffer.read(blocklen_bytes)
+		newdata = infile.read(blocklen_bytes)
 		if len(newdata) == 0:
 			break
 		indata += newdata
@@ -88,7 +95,7 @@ else:
 		hashalg.update(indata)
 		for i in range(0, len(indata), linelen_bytes):
 			print(base64.b64encode(indata[i : i + linelen_bytes]).decode("utf-8"))
-		indata = sys.stdin.buffer.read(blocklen_bytes)
+		indata = infile.read(blocklen_bytes)
 		total_len += len(indata)
 		if len(indata) == 0:
 			break
