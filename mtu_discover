@@ -1,0 +1,80 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	mtu_discover: bisect packet sizes to discover MTU
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import re
+import contextlib
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser()
+parser.add_argument("-l", "--lower-pktsize", metavar = "bytes", type = int, default = 1000, help = "Lower bound packet size. Defaults to %(default)d bytes.")
+parser.add_argument("-u", "--upper-pktsize", metavar = "bytes", type = int, default = 3000, help = "Upper bound packet size. Defaults to %(default)d bytes.")
+parser.add_argument("-t", "--timeout-millis", metavar = "milliseconds", type = int, default = 500, help = "Ping timeout in milliseconds. Defaults to %(default)d bytes.")
+parser.add_argument("-c", "--pkt-count", metavar = "count", type = int, default = 5, help = "Number of ping packets to send to target. Defaults to %(default)d.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increase verbosity during test. Can be specified multiple times.")
+parser.add_argument("hostname", metavar = "hostname", type = str, help = "Hostname to ping")
+args = parser.parse_args(sys.argv[1:])
+
+xmt_recv_re = re.compile(": xmt/rcv/%loss = (?P<xmt>\d+)/(?P<rcv>\d+)/")
+def ping_successful(hostname, pktsize, timeout_millis, pkt_count, verbose):
+	payload_size = pktsize - 28
+	cmd = [ "fping", "-M", "-t%.0f" % (timeout_millis), "-p%.0f" % (timeout_millis), "-c%d" % (pkt_count), "-b%d" % (payload_size), hostname ]
+	if verbose:
+		print(" ".join(cmd))
+	result = subprocess.run(cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+	stdout = result.stdout.decode("ascii")
+	if verbose:
+		print(stdout)
+	result = xmt_recv_re.search(stdout)
+	result = result.groupdict()
+	xmt = int(result["xmt"])
+	rcv = int(result["rcv"])
+	if rcv not in [ 0, xmt ]:
+		print("Neither none nor all packets received: %d transmitted, %d received (%.0f%% went through) at MTU = %d." % (xmt, rcv, rcv / xmt * 100, pktsize), file = sys.stderr)
+	return xmt == rcv
+
+# Lower bound works, upper bound does NOT work.
+low = args.lower_pktsize
+high = args.upper_pktsize
+
+# First, assert that lower boundary works.
+if args.verbose >= 1:
+	print("Asserting that lower bound of %d bytes works." % (low))
+if not ping_successful(args.hostname, low, args.timeout_millis, args.pkt_count, args.verbose >= 2):
+	raise Exception("Lower packet size of %d bytes still did not make it, lower the lower boundary." % (low))
+
+# First, assert that higher boundary does NOT work.
+if args.verbose >= 1:
+	print("Asserting that upper bound of %d bytes does not work." % (high))
+if ping_successful(args.hostname, high, args.timeout_millis, args.pkt_count, args.verbose >= 2):
+	raise Exception("Upper packet size of %d bytes did not make it, increase the upper boundary." % (high))
+
+while (high - low) > 1:
+	mid = round((low + high) / 2)
+	if args.verbose >= 1:
+		print("Low %4d High %4d, trying: %d" % (low, high, mid), file = sys.stderr)
+	if ping_successful(args.hostname, mid, args.timeout_millis, args.pkt_count, args.verbose >= 2):
+		low = mid
+	else:
+		high = mid
+print("Found MTU: %d" % (low))
