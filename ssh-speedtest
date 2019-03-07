@@ -1,0 +1,95 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	ssh-speedtest: Perform a speed test via a SSH connection
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import time
+import subprocess
+import threading
+from FriendlyArgumentParser import FriendlyArgumentParser
+from FilesizeFormatter import FilesizeFormatter
+
+parser = FriendlyArgumentParser()
+parser.add_argument("-p", "--port", metavar = "port", type = int, default = 22, help = "Port to connect to. Defaults to %(default)d.")
+parser.add_argument("-l", "--leadtime", metavar = "secs", type = float, default = 3, help = "Time to wait after connection establishment until the counting starts. Defaults to %(default).1f seconds.")
+parser.add_argument("-t", "--time", metavar = "secs", type = float, default = 10, help = "Time to connect to host for reading/writing. Defaults to %(default).1f seconds.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Be more verbose during the process.")
+parser.add_argument("user_host", metavar = "user@host", type = str, help = "Connect to this host using the given username.")
+args = parser.parse_args(sys.argv[1:])
+
+fsfmt = FilesizeFormatter()
+
+class DummyReaderWriter(object):
+	def __init__(self, function):
+		self._function = function
+		self._transferred = 0
+		self._run = True
+		self._lock = threading.Lock()
+		self._thread = threading.Thread(target = self._thread_fnc)
+		self._thread.start()
+
+	def _thread_fnc(self):
+		self._t0 = time.time()
+		while self._run:
+			try:
+				written = self._function()
+			except BrokenPipeError:
+				break
+			with self._lock:
+				self._transferred += written
+
+	def reset_stats(self):
+		with self._lock:
+			self._t0 = time.time()
+			self._transferred = 0
+
+	def get_stats(self):
+		with self._lock:
+			now = time.time()
+			return (self._transferred, now - self._t0)
+
+	def quit(self):
+		self._run = False
+		self._thread.join()
+
+zero_data = bytes(128 * 1024)
+proc = subprocess.Popen([ "ssh", "-p", str(args.port), args.user_host, "cat >/dev/null" ], stdin = subprocess.PIPE, stdout = subprocess.DEVNULL)
+drw = DummyReaderWriter(function = lambda: proc.stdin.write(zero_data))
+time.sleep(args.leadtime)
+drw.reset_stats()
+
+time.sleep(args.time)
+(tx, tdiff) = drw.get_stats()
+proc.kill()
+drw.quit()
+print("Written: %s in %.1f secs, %s/s" % (fsfmt(tx), tdiff, fsfmt(round(tx / tdiff))))
+
+
+proc = subprocess.Popen([ "ssh", "-p", str(args.port), args.user_host, "cat /dev/zero" ], stdout = subprocess.PIPE, stdin = subprocess.DEVNULL)
+drw = DummyReaderWriter(function = lambda: len(proc.stdout.read(128 * 1024)))
+time.sleep(args.leadtime)
+drw.reset_stats()
+
+time.sleep(args.time)
+(rx, tdiff) = drw.get_stats()
+proc.kill()
+drw.quit()
+print("Read   : %s in %.1f secs, %s/s" % (fsfmt(rx), tdiff, fsfmt(round(rx / tdiff))))
