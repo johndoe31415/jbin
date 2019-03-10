@@ -1,0 +1,68 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	cpu_loadtest: Put the CPU under heavy load and monitor temperature
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import subprocess
+import time
+import collections
+
+class TempMonitor():
+	def __init__(self):
+		self._max_temp = 0
+
+	def sensors_get_temp(self):
+		stdout = subprocess.check_output([ "sensors", "-u", "coretemp-*" ]).decode("ascii")
+		name = None
+		temperatures = collections.OrderedDict()
+		for line in stdout.split("\n"):
+			if line.endswith(":"):
+				name = line[:-1]
+			elif "_input: " in line:
+				temp = float(line.split(":")[1])
+				temperatures[name] = temp
+				name = None
+		self._max_temp = max(self._max_temp, max(temperatures.values()))
+		return temperatures
+
+	def print(self):
+		sensors_data = self.sensors_get_temp()
+		sensors_str = ", ".join("%s = %4.1f°C" % (name, temp) for (name, temp) in sensors_data.items())
+		avg_temp = sum(sensors_data.values()) / len(sensors_data)
+		print("Avg %4.1f, Max %4.1f: %s" % (avg_temp, self._max_temp, sensors_str))
+
+cpu_count = 0
+with open("/proc/cpuinfo") as f:
+	for line in f:
+		if line.startswith("processor"):
+			cpu_count += 1
+
+temp_monitor = TempMonitor()
+
+procs = [ subprocess.Popen([ "dd", "if=/dev/urandom", "of=/dev/null", "bs=1M" ], stdout = subprocess.DEVNULL) for i in range(cpu_count) ]
+print("Started %d processes." % (len(procs)))
+
+try:
+	while True:
+		temp_monitor.print()
+		time.sleep(5)	
+finally:
+	for proc in procs:
+		proc.kill()
