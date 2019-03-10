@@ -27,6 +27,7 @@ import collections
 class TempMonitor():
 	def __init__(self):
 		self._max_temp = 0
+		self._initial_temp = self.sensors_get_temp()
 
 	def sensors_get_temp(self):
 		stdout = subprocess.check_output([ "sensors", "-u", "coretemp-*" ]).decode("ascii")
@@ -46,7 +47,8 @@ class TempMonitor():
 		sensors_data = self.sensors_get_temp()
 		sensors_str = ", ".join("%s = %4.1f°C" % (name, temp) for (name, temp) in sensors_data.items())
 		avg_temp = sum(sensors_data.values()) / len(sensors_data)
-		print("Avg %4.1f, Max %4.1f: %s" % (avg_temp, self._max_temp, sensors_str))
+		maxdiff = max((now - initial) for (now, initial) in zip(sensors_data.values(), self._initial_temp.values()))
+		print("Avg %4.1f, Max %4.1f, Delta %+5.1f: %s" % (avg_temp, self._max_temp, maxdiff, sensors_str))
 
 cpu_count = 0
 with open("/proc/cpuinfo") as f:
