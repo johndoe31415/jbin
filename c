@@ -276,6 +276,13 @@ def bo(x, bytecnt = 0) -> FncDescription(category = "Endianness"):
 	x = sum([ splitint[len(splitint) - 1 - i] * (256 ** i) for i in range(len(splitint)) ])
 	return x
 
+def bitmask(lo, hi) -> FncDescription(category = "Bit operations", aliases = [ "bitlen" ]):
+	"""Returns a bitmask that includes bits lo:hi (both inclusive)."""
+	(lo, hi) = (min(lo, hi), max(lo, hi))
+	length = hi - lo + 1
+	mask = (1 << length) - 1
+	return mask << lo
+
 def highbit(x) -> FncDescription(category = "Bit operations", aliases = [ "bitlen" ]):
 	"""Returns the highest bit number of the integer input."""
 	assert(isinstance(x, int))
