@@ -10,6 +10,7 @@ passwd the first time around). It's probably not very useful for anyone else.
 ## debootstrap checklist
   * fdisk /boot partition
   * debootstrap cosmic subdir http://ftp.halifax.rwth-aachen.de/ubuntu/
+  * debootstrap stretch subdir http://ftp.de.debian.org/debian/
   * chmod 000 /etc/update-motd.d/10-help-text 
   * apt-get install acl apt-file bzip2 convmv gnupg grub2 hdparm hexedit inetutils-tools kbd less linux-image-generic lm-sensors locales lshw lsof lzma man mlocate nano openssh-client openssh-server p7zip-full pciutils psmisc pwgen recode rsync screen sqlite3 unzip usbutils vim xz-utils net-tools
   * fstab / crypttab / hostname
@@ -77,6 +78,20 @@ WantedBy=default.target
   * GRANT ALL PRIVILEGES ON DATABASE foodb TO foouser;
   * Show tables: \dt
 
-
 ## Bugfix: Ubuntu/Thunderbird shows huge emojis in subject line
   * apt-get install fonts-symbola
+
+## mkfs.ext4 without lazy init
+  * mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0
+
+## kernel prerequisites for vanilla system
+  * apt-get install build-essential flex bison libncurses5-dev libssl-dev bc libelf-dev
+
+## GPT UEFI boot
+  * apt-get install grub-efi-amd64 efivar
+  * vfat partition type EFI System, mount at /boot/efi
+  * modprobe efivars
+  * mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+  * grub-install --efi-directory=/boot/efi --target=x86_64-efi /dev/sda
+  * mkdir -p /boot/efi/EFI/boot/
+  * cp /boot/efi/EFI/debian/grubx64.efi /boot/efi/EFI/boot/bootx64.efi
