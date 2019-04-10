@@ -21,8 +21,19 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 DATE=`/bin/date +'%Y_%m_%d_%H_%M_%S'`
-OUTDIR="patches_${DATE}"
-OUTFILE="patches_${DATE}.tar.gz"
+
+REMOTE=`git config --get remote.origin.url`
+if [ "$REMOTE" == "" ]; then
+	OUTDIR="patches_${DATE}"
+else
+	REMOTE=`basename "$REMOTE"`
+	if [ "${REMOTE:$((${#REMOTE}-4))}" == ".git" ]; then
+		REMOTE="${REMOTE:0:$((${#REMOTE}-4))}"
+	fi
+	OUTDIR="${REMOTE}_patches_${DATE}"
+fi
+OUTFILE="${OUTDIR}.tar.gz"
+
 if [ -d "${OUTFILE}" ]; then
 	echo "Will not overwrite output directory ${OUTDIR}."
 	exit 1
