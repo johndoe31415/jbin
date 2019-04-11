@@ -187,4 +187,8 @@ map <F11> :cp<Enter>zz:cc<Enter>
 imap <F12> <Esc>:cn<Enter>zz:cc<Enter>
 map <F12> :cn<Enter>zz:cc<Enter>
 
-autocmd BufWritePre *.py :%s/\s\+$//e
+autocmd FileType python autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType javascript autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType c autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType cpp autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType html autocmd BufWritePre <buffer> :%s/\s\+$//e
