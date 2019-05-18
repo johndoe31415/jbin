@@ -449,7 +449,7 @@ def isprime(n) -> FncDescription(category = "Prime numbers"):
 
 		if not passed:
 			return False
-	
+
 	return True
 
 def nextprime(n) -> FncDescription(category = "Prime numbers"):
@@ -752,7 +752,7 @@ def factor(n) -> FncDescription(category = "Prime numbers"):
 		factor = pollard_rho(n)
 		if factor is None:
 			break
-		
+
 		factors[factor] = 0
 		while (n % factor) == 0:
 			factors[factor] += 1
@@ -849,7 +849,7 @@ def ddblocksize(size) -> FncDescription(category = "Disk size operations"):
 
 def ahex2int(ahex) -> FncDescription(category = "Binary data manipulation"):
 	"""\
-	Converts an ASCII hex value (i.e. one where a = 0, b = 1, c = 2, ..., 
+	Converts an ASCII hex value (i.e. one where a = 0, b = 1, c = 2, ...,
 	p = 15 to an integer value."""
 	alphabet = "abcdefghijklmnop"
 	ahex = ahex.lower()
@@ -858,6 +858,10 @@ def ahex2int(ahex) -> FncDescription(category = "Binary data manipulation"):
 		nibble = alphabet.index(char)
 		value = (value << 4) | nibble
 	return value
+
+def xor(x, y) -> FncDescription(category = "Binary data manipulation"):
+	"""Perform XOR of two byte arrays."""
+	return bytes(cx ^ cy for (cx, cy) in zip(x, y))
 
 def bytes2hex(data) -> FncDescription(category = "Binary data manipulation"):
 	"""Converts a byte data array to a hex string."""
@@ -998,7 +1002,7 @@ def binom(n, p, min_p = 0.001) -> FncDescription(category = "Stochastical functi
 	for i in range(n + 1):
 		q = (p ** i) * ((1 - p) ** (n - i)) * nCr(n, i)
 		if q >= min_p:
-			print("%4d %4.1f%%" % (i, 100 * q)) 
+			print("%4d %4.1f%%" % (i, 100 * q))
 
 def normal(x, mu, sigma) -> FncDescription(category = "Stochastical functions"):
 	"""\
@@ -1272,7 +1276,7 @@ def testcases():
 				while (x % p) == 0:
 					x //= p
 			assert(x == 1)
-	
+
 	def factorlist_testcases():
 		for i in range(10):
 			x = random.randint(100000, 1000000) & ~1
@@ -1287,7 +1291,7 @@ def testcases():
 			for x in composition:
 				product *= x
 			assert(number == product)
-	
+
 	def isprime_testcases():
 		for p in [ 2, 3, 5, 11, 101, 2003 ]:
 			assert(isprime(p))
