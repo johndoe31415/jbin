@@ -1,0 +1,200 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	retrieve_data: Move data from digital cameras to local directories
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin.  If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import json
+import shutil
+import datetime
+import subprocess
+import glob
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser()
+parser.add_argument("-c", "--create-config", action = "store_true", help = "Create a default configuration file in the local directory if it does not exist yet.")
+parser.add_argument("-f", "--config-filename", metavar = "file", type = str, default = ".retrieve.json", help = "Configuration filename. Defaults to %(default)s.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Be more verbose.")
+parser.add_argument("name", metavar = "name", type = str, nargs = "?", help = "Name of the batch of files that are to be retrieved. If not supplied, query on the command line.")
+args = parser.parse_args(sys.argv[1:])
+
+class Retriever():
+	_DEFAULT_CONFIG = {
+		"sources": [
+			{
+				"dir": "/media/${USER}/1234-1234/DCIM",
+				"glob": [ "*.JPG" ],
+			},
+		],
+		"destination": {
+			"dir":	"${YEAR}-${MONTH}-${DAY}-${NAME}",
+		},
+		"options": {
+			"lowercase_ext":	True,
+			"umount":			"${SRCDIR}/..",
+			"sync":				True,
+		},
+	}
+
+	def __init__(self, args):
+		self._args = args
+		now = datetime.datetime.now()
+		self._subs = {
+			"USER": os.environ.get("USER"),
+			"YEAR": now.strftime("%Y"),
+			"MONTH": now.strftime("%m"),
+			"DAY": now.strftime("%d"),
+			"HOUR": now.strftime("%H"),
+			"MINUTE": now.strftime("%M"),
+			"SECOND": now.strftime("%S"),
+		}
+
+		if self._args.create_config:
+			if not os.path.isfile(self._args.config_filename):
+				with open(self._args.config_filename, "w") as f:
+					json.dump(self._DEFAULT_CONFIG, f, indent = 4)
+					f.write("\n")
+					print("Configuration file created: %s" % (self._args.config_filename))
+					sys.exit(0)
+			else:
+				print("Refusing to overwrite: %s" % (self._args.config_filename))
+				sys.exit(1)
+
+
+		if not os.path.isfile(self._args.config_filename):
+			print("No such configuration file: %s" % (self._args.config_filename))
+			sys.exit(1)
+
+		with open(self._args.config_filename) as f:
+			self._config = json.load(f)
+
+	def get_dest_name(self):
+		if self._args.name is None:
+			dest_name = input("Name: ")
+		else:
+			dest_name = args.name
+		dest_name = dest_name.replace(" ", "_")
+		dest_name = dest_name.replace("/", "_")
+		dest_name = dest_name.replace("'", "")
+		dest_name = dest_name.replace("\"", "")
+		return dest_name
+
+	def _replace(self, text):
+		for (src, dst) in self._subs.items():
+			src = "${" + src + "}"
+			text = text.replace(src, dst)
+		return text
+
+	def _get_dest_dir(self):
+		dest_name = self.get_dest_name()
+		self._subs["NAME"] = dest_name
+		dest_base = self._replace(self._config["destination"]["dir"])
+
+		for i in range(1000):
+			if i == 0:
+				dest_dir = dest_base
+			else:
+				dest_dir = "%s_%03d" % (dest_base, i)
+			try:
+				os.makedirs(dest_dir)
+				return dest_dir
+			except FileExistsError:
+				pass
+		return None
+
+	def _glob(self, src_dir, globmask):
+		for filename in glob.glob(src_dir + "/" + globmask):
+			if os.path.isfile(filename):
+				yield filename
+
+	def _run_source(self, source):
+		src_dir = os.path.realpath(self._replace(source["dir"]))
+		self._subs["SRCDIR"] = os.path.realpath(src_dir)
+		src_files = set()
+		for globmask in source["glob"]:
+			src_files |= set(self._glob(src_dir, globmask))
+		if len(src_files) == 0:
+			print("No matching files found in source directory: %s" % (src_dir))
+			sys.exit(1)
+		src_files = list(sorted(src_files))
+
+		dest_dir = self._get_dest_dir()
+		if dest_dir is None:
+			print("Failed to allocate destination directory.")
+			sys.exit(1)
+
+		filesizes = { }
+		for src_file in src_files:
+			filesizes[src_file] =  os.stat(src_file).st_size
+		total_size = sum(filesizes.values())
+		print("Moving %d files (%.0f MiB) to %s" % (len(src_files), total_size / 1024 / 1024, dest_dir))
+
+		copied_size = 0
+		for src_file in src_files:
+			dst_base = os.path.basename(src_file)
+			if self._config["options"].get("lowercase_ext"):
+				(head, tail) = os.path.splitext(dst_base)
+				dst_base = head + tail.lower()
+
+			dst_file = dest_dir + "/" + dst_base
+			copied_size += filesizes[src_file]
+
+			if total_size > 0:
+				prefix = "%5.1f%%: " % (copied_size / total_size * 100)
+			else:
+				prefix = ""
+			if self._args.verbose:
+				print("%s%s -> %s" % (prefix, src_file, dst_file))
+			else:
+				src_base = os.path.basename(src_file)
+				if src_base == dst_base:
+					print("%s%s" % (prefix, src_base))
+				else:
+					print("%s%s -> %s" % (prefix, src_base, dst_base))
+			shutil.move(src_file, dst_file)
+
+	def _sync(self):
+		if self._config["options"].get("sync"):
+			if self._args.verbose:
+				print("Syncing...")
+			subprocess.check_call([ "sync" ])
+
+	def _umount(self):
+		if self._config["options"].get("umount"):
+			umount_dir = os.path.realpath(self._replace(self._config["options"].get("umount")))
+			if self._args.verbose:
+				print("Unmounting %s..." % (umount_dir))
+			subprocess.check_call([ "umount", umount_dir ])
+
+	def run(self):
+		for source in self._config["sources"]:
+			srcdir = self._replace(source["dir"])
+			if os.path.isdir(srcdir):
+				self._run_source(source)
+				self._sync()
+				self._umount()
+				break
+		else:
+			print("No sources found to retrieve.")
+			sys.exit(1)
+
+retriever = Retriever(args)
+retriever.run()
