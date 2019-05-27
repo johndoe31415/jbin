@@ -51,6 +51,7 @@ class Retriever():
 			"lowercase_ext":	True,
 			"umount":			"${SRCDIR}/..",
 			"sync":				True,
+			"chmod":			"0o644",
 		},
 	}
 
@@ -170,6 +171,10 @@ class Retriever():
 				else:
 					print("%s%s -> %s" % (prefix, src_base, dst_base))
 			shutil.move(src_file, dst_file)
+
+			if self._config["options"].get("chmod") is not None:
+				permissions = int(self._config["options"]["chmod"], 8)
+				os.chmod(dst_file, permissions)
 
 	def _sync(self):
 		if self._config["options"].get("sync"):
