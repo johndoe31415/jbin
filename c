@@ -1235,6 +1235,14 @@ def linint(x1, y1, x2, y2, x) -> FncDescription(category = "Misc"):
 	t = (y2 - y1) / (x2 - x1)
 	return y1 + (x - x1) * t
 
+def area_at_ratio(area, ratio) -> FncDescription(category = "Misc"):
+	"""\
+	Determines the width and height of a rectangle when the area of the
+	rectangle and the ratio of the two sides is given."""
+	height = math.sqrt(area / ratio)
+	width = area / height
+	return (width, height)
+
 def lambertW(x) -> FncDescription(category = "Numerical mathematics", aliases = [ "lambW", "lW" ]):
 	"""Approximates the Lambert W function for the given value."""
 	wj = 1
