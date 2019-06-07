@@ -42,6 +42,7 @@ class Retriever():
 			{
 				"dir": "/media/${USER}/1234-1234/DCIM",
 				"glob": [ "*.JPG" ],
+				"umount":			"${SRCDIR}/..",
 			},
 		],
 		"destination": {
@@ -49,7 +50,6 @@ class Retriever():
 		},
 		"options": {
 			"lowercase_ext":	True,
-			"umount":			"${SRCDIR}/..",
 			"sync":				True,
 			"chmod":			"0o644",
 		},
@@ -182,9 +182,9 @@ class Retriever():
 				print("Syncing...")
 			subprocess.check_call([ "sync" ])
 
-	def _umount(self):
-		if self._config["options"].get("umount"):
-			umount_dir = os.path.realpath(self._replace(self._config["options"].get("umount")))
+	def _umount(self, source):
+		if source.get("umount"):
+			umount_dir = os.path.realpath(self._replace(source.get("umount")))
 			if self._args.verbose:
 				print("Unmounting %s..." % (umount_dir))
 			subprocess.check_call([ "umount", umount_dir ])
@@ -195,7 +195,7 @@ class Retriever():
 			if os.path.isdir(srcdir):
 				self._run_source(source)
 				self._sync()
-				self._umount()
+				self._umount(source)
 				break
 		else:
 			print("No sources found to retrieve.")
