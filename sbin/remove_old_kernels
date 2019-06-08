@@ -1,0 +1,41 @@
+#!/bin/bash -e
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	remove_old_kernels: Remove old kernel images/headers
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+CURRENT_VERSION=`uname -r`
+CURRENT_VERSION=`echo "$CURRENT_VERSION" | sed 's/-generic//g;'`
+
+PKGS=`dpkg -l | grep '^ii  linux-\(headers\|image\|modules\)' | awk '{print $2}' | grep -v '\(linux-image-generic\|linux-headers-generic\|linux-image-extra-virtual\)' | grep -v "$CURRENT_VERSION" | xargs echo`
+if [ "$PKGS" == "" ]; then
+	echo "Nothing found to remove."
+	exit 1
+fi
+
+echo "Protecting ${CURRENT_VERSION}:"
+dpkg -l | grep '^ii  linux-\(headers\|image\|modules\)' | awk '{print $2}' | grep -v '\(linux-image-generic\|linux-headers-generic\|linux-image-extra-virtual\)' | grep "$CURRENT_VERSION"
+echo
+echo "Removing:"
+dpkg -l | grep '^ii  linux-\(headers\|image\|modules\)' | awk '{print $2}' | grep -v '\(linux-image-generic\|linux-headers-generic\|linux-image-extra-virtual\)' | grep -v "$CURRENT_VERSION"
+echo
+PKGS=`dpkg -l | grep '^ii  linux-\(headers\|image\|modules\)' | awk '{print $2}' | grep -v '\(linux-image-generic\|linux-headers-generic\|linux-image-extra-virtual\)' | grep -v "$CURRENT_VERSION" | xargs echo`
+echo "Command:"
+echo "apt-get --purge remove ${PKGS}"
+apt-get --purge remove ${PKGS}
