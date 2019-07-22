@@ -1,0 +1,70 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	pointer-lock-unlock: Deactivate/activate all mouse pointers using xinput
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import subprocess
+import re
+
+def enumerate_ptr_ids():
+	slave_ptr_regex = re.compile(r"id=(?P<id>\d+).*slave\s+pointer")
+	devices = subprocess.check_output([ "xinput", "list" ])
+	devices = devices.decode().split("\n")
+	ptr_ids = set()
+	for line in devices:
+		if "XTEST" in line:
+			continue
+		match = slave_ptr_regex.search(line)
+		if match is None:
+			continue
+		match = match.groupdict()
+		ptr_ids.add(int(match["id"]))
+
+	return ptr_ids
+
+def get_enable_status(device_id):
+	dev_props = subprocess.check_output([ "xinput", "list", str(device_id) ])
+	return not (b"device is disabled" in dev_props)
+
+def change_all(ids, state):
+#	print(state)
+	for pid in ids:
+		subprocess.check_call([ "xinput", state, str(pid) ])
+
+def disable_all(ids):
+	change_all(ids, "disable")
+
+def enable_all(ids):
+	change_all(ids, "enable")
+
+ptr_ids = enumerate_ptr_ids()
+states = { pid: get_enable_status(pid) for pid in ptr_ids }
+dev_states = set(states.values())
+if len(dev_states) == 2:
+	# Some on, some off
+	disable_all(ptr_ids)
+else:
+	state = dev_states.pop()
+	if state:
+		# All enabled
+		disable_all(ptr_ids)
+	else:
+		# All disabled
+		enable_all(ptr_ids)
