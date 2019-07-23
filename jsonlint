@@ -23,6 +23,11 @@
 import json
 import sys
 
-data = sys.stdin.read()
+if len(sys.argv) > 1:
+	infile = sys.argv[1]
+	with open(infile) as f:
+		data = f.read()
+else:
+	data = sys.stdin.read()
 data = json.loads(data)
 print(json.dumps(data, indent = 4, sort_keys = True))
