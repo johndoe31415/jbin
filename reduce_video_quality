@@ -1,0 +1,80 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	reduce_video_quality: Rescale video to smaller version
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+def scale_geometry(text):
+	single_values = {
+		"240":		(352, 240),
+		"360":		(480, 360),
+		"480":		(858, 480),
+		"720":		(1280, 720),
+		"1920":		(1920, 1080),
+		"hd":		(1920, 1080),
+		"2160":		(3860, 2160),
+		"uhd":		(3860, 2160),
+	}
+	if text.lower() in single_values:
+		return single_values[text.lower()]
+	value = [ int(x) for x in text.split("x", maxsplit = 1) ]
+	return value
+
+def timestamp(text):
+	values = list(reversed([ int(x) for x in text.split(":") ]))
+	if len(values) < 3:
+		values += [ 0, 0, 0 ]
+	total_seconds = values[0] + (60 * values[1]) + (3600 * values[2])
+	return total_seconds
+
+def fmt_secs(total_seconds):
+	total_seconds = round(total_seconds)
+	hrs = total_seconds // 3600
+	mins = total_seconds % 3600 // 60
+	secs = total_seconds % 3600 % 60
+	return "%d:%02d:%02d" % (hrs, mins, secs)
+
+parser = FriendlyArgumentParser(description = "Transcode video and reduce its quality/size")
+parser.add_argument("-s", "--size", metavar = "geometry", type = scale_geometry, default = "1920x1080", help = "Output geometry that video should be scaled to. Defaults to %(default)s. Can also be a single value that is typically recognized, such as 480, 720, 1080 or uhd.")
+parser.add_argument("--start", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to start rendering. Can be of format ss or mm:ss or hh:mm:ss.")
+parser.add_argument("--end", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to end rendering. Can be of format ss or mm:ss or hh:mm:ss.")
+parser.add_argument("infile", metavar = "in_filename", type = str, help = "Input video file.")
+parser.add_argument("outfile", metavar = "out_filename", type = str, help = "Reduced quality output video file.")
+args = parser.parse_args(sys.argv[1:])
+
+cmd = [ "ffmpeg" ]
+if args.start is not None:
+	cmd += [ "-ss", fmt_secs(args.start) ]
+cmd += [ "-i", args.infile ]
+if (args.end is not None):
+	if args.start is None:
+		duration = args.end
+	else:
+		duration = args.end - args.start
+	cmd += [ "-t", fmt_secs(duration) ]
+cmd += [ "-vf", "scale=%d:%d" % (args.size[0], args.size[1]) ]
+cmd += [ "-c:v", "libx265", "-crf", "28" ]
+cmd += [ "-c:a", "aac", "-b:a", "128k" ]
+cmd += [ args.outfile ]
+
+subprocess.check_call(cmd)
