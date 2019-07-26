@@ -70,6 +70,9 @@ class DummyReaderWriter(object):
 		self._run = False
 		self._thread.join()
 
+def print_result(name, amount, tdiff):
+	print("%-7s: %s in %.1f secs, %s/s (%sit/s)" % (name, fsfmt(amount), tdiff, fsfmt(round(amount / tdiff)), fsfmt(round(8 * amount / tdiff))))
+
 zero_data = bytes(128 * 1024)
 proc = subprocess.Popen([ "ssh", "-p", str(args.port), args.user_host, "cat >/dev/null" ], stdin = subprocess.PIPE, stdout = subprocess.DEVNULL)
 drw = DummyReaderWriter(function = lambda: proc.stdin.write(zero_data))
@@ -80,8 +83,7 @@ time.sleep(args.time)
 (tx, tdiff) = drw.get_stats()
 proc.kill()
 drw.quit()
-print("Written: %s in %.1f secs, %s/s" % (fsfmt(tx), tdiff, fsfmt(round(tx / tdiff))))
-
+print_result("Written", tx, tdiff)
 
 proc = subprocess.Popen([ "ssh", "-p", str(args.port), args.user_host, "cat /dev/zero" ], stdout = subprocess.PIPE, stdin = subprocess.DEVNULL)
 drw = DummyReaderWriter(function = lambda: len(proc.stdout.read(128 * 1024)))
@@ -92,4 +94,4 @@ time.sleep(args.time)
 (rx, tdiff) = drw.get_stats()
 proc.kill()
 drw.quit()
-print("Read   : %s in %.1f secs, %s/s" % (fsfmt(rx), tdiff, fsfmt(round(rx / tdiff))))
+print_result("Read", rx, tdiff)
