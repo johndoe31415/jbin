@@ -95,3 +95,12 @@ WantedBy=default.target
   * grub-install --efi-directory=/boot/efi --target=x86_64-efi /dev/sda
   * mkdir -p /boot/efi/EFI/boot/
   * cp /boot/efi/EFI/debian/grubx64.efi /boot/efi/EFI/boot/bootx64.efi
+
+## Using lirc/Iguanaworks USB to TX
+  * TX works with stock kernel module
+  * No need to install stupid Iguanaworks special software (igdaemon, etc.)
+  * /etc/lirc/lirc_options.conf "driver = default" instead of "driver = devinput"
+  * Place remote files in /etc/lirc/lircd.conf.d
+  * irsend list "" ""
+  * irsend list fooremote ""
+  * irsend send_once fooremote KEY_UP
