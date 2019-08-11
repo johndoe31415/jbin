@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	mtimeecho: Print the mtime of files that are given on stdin
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import os
+import datetime
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "output names of files with respective mtime")
+parser.add_argument("-t", "--time", choices = [ "mtime", "ctime", "atime" ], default = "mtime", help = "Choose either %(choices)s as the time to print. Defaults to %(default)s.")
+parser.add_argument("-f", "--fmt", metavar = "fmtstr", default = "%Y-%m-%d-%q", help = "Format string to emit for each file. Can use all strftime() replacements and also \"%%q\" for original filename. Defaults to %(default)s.")
+args = parser.parse_args(sys.argv[1:])
+
+for filename in sys.stdin:
+	filename = filename.rstrip("\r\n")
+	statres = os.stat(filename)
+	field = "st_" + args.time
+	timet = getattr(statres, field)
+	ts = datetime.datetime.fromtimestamp(timet)
+
+	formatted = ts.strftime(args.fmt)
+	formatted = formatted.replace("%q", filename)
+	print(formatted)
