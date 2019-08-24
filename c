@@ -112,6 +112,68 @@ class FncDescription():
 	def setprototype(self, prototype):
 		self._params["prototype"] = prototype
 
+class Matrix():
+	def __init__(self, values):
+		self._values = values
+		assert(len(row) == len(self._values[0]) for row in self._values)
+
+	@classmethod
+	def colvector(cls, vector):
+		return cls(list([ value ] for value in vector))
+
+	@classmethod
+	def rowvector(cls, vector):
+		return cls([ vector ])
+
+	@classmethod
+	def zero(cls, cols, rows):
+		result = [ ]
+		for i in range(rows):
+			result.append([ 0 ] * cols)
+		return cls(result)
+
+	@property
+	def rows(self):
+		return len(self._values)
+
+	@property
+	def cols(self):
+		return len(self._values[0])
+
+	def transpose(self):
+		result = self.zero(self.rows, self.cols)
+		for i in range(self.rows):
+			for j in range(self.cols):
+				result._values[j][i] = self._values[i][j]
+		return result
+
+	def __mul__(self, other):
+		if self.cols != other.rows:
+			raise ValueError("Cannot multiply a %d x %d matrix with a %d x %d matrix." % (self.rows, self.cols, other.rows, other.cols))
+		result = Matrix.zero(other.cols, self.rows)
+		for i in range(self.rows):
+			for j in range(other.cols):
+				for k in range(self.cols):
+					result._values[i][j] += self._values[i][k] * other._values[k][j]
+		return result
+
+	def __setitem__(self, index, value):
+		(i, j) = index
+		self._values[i][j] = value
+
+	def __getitem__(self, index):
+		(i, j) = index
+		return self._values[i][j]
+
+	def dump(self):
+		for row in self._values:
+			col = " ".join("%7.3f" % (value) for value in row)
+			print("( %s )" % (col))
+		print()
+
+	def __repr__(self):
+		return str(self._values)
+
 def log2(value):
 	return log(value) / log(2)
 
@@ -994,6 +1056,62 @@ def nPr(n, r) -> FncDescription(category = "Stochastical functions"):
 def nCr(n, r) -> FncDescription(category = "Stochastical functions"):
 	"""Gives the number of combinations of r out of n."""
 	return nPr(n, r) // math.factorial(r)
+
+def ccp_ev(n) -> FncDescription(category = "Stochastical functions"):
+	"""Gives the expected value of the coupon collector's problem: where there
+	are n types of coupons, what is the number of expected draws t one must
+	make to draw at least one of every of the n types of coupons."""
+	gamma = 0.5772156649		 # Euler-Mascheroni constant
+	ET = n * math.log(n) + gamma * n + 0.5
+	return ET
+
+def ccp_dist(n, t) -> FncDescription(category = "Stochastical functions"):
+	"""Gives the probabilities of the coupon collector's problem: where there
+	are n types of coupons and t draws, what are the probabilites after those t
+	draws to receive 0, 1, 2, ... n different types of token."""
+
+	# Generate Markov chain matrix
+	M = Matrix.zero(n + 1, n + 1)
+	M[(1, 0)] = 1
+	for i in range(n):
+		p =  (i + 1) / n
+		M[(i + 1, i + 1)] = p
+		if i < n - 1:
+			M[(i + 2, i + 1)] = 1 - p
+
+	# Initial probability vector
+	v = Matrix.colvector([ 1 ] + ([ 0 ] * n))
+
+	# Repeatedly multiply matrix with vector
+	for q in range(t):
+		v = M * v
+
+	# Extract proability distribution
+	v = v.transpose()._values[0]
+	return v
+
+def ccp(n, t) -> FncDescription(category = "Stochastical functions"):
+	"""Gives the probability of the coupon collector's problem: where there are
+	n types of coupons and t draws, what is the probabilitiy that among the t
+	draws every of the n types of coupon is present at least once."""
+
+	probabilities = ccp_dist(n, t)
+	# We're looking for all n coupons
+	return probabilities[n]
+
+def ccp_hp(n, t) -> FncDescription(category = "Stochastical functions"):
+	"""Gives the number of different coupon occurrences that have the highest
+	probability of appearing for n types of coupons after t tries."""
+
+	probabilities = ccp_dist(n, t)
+
+	# We're looking for the index with highest probability
+	high_index = 0
+	for (index, value) in enumerate(probabilities):
+		if probabilities[index] > probabilities[high_index]:
+			high_index = index
+
+	return high_index
 
 def binom(n, p, min_p = 0.001) -> FncDescription(category = "Stochastical functions"):
 	"""\
