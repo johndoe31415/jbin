@@ -1058,7 +1058,8 @@ def nCr(n, r) -> FncDescription(category = "Stochastical functions"):
 	return nPr(n, r) // math.factorial(r)
 
 def ccp_ev(n) -> FncDescription(category = "Stochastical functions"):
-	"""Gives the expected value of the coupon collector's problem: where there
+	"""\
+	Gives the expected value of the coupon collector's problem: where there
 	are n types of coupons, what is the number of expected draws t one must
 	make to draw at least one of every of the n types of coupons."""
 	gamma = 0.5772156649		 # Euler-Mascheroni constant
@@ -1066,7 +1067,8 @@ def ccp_ev(n) -> FncDescription(category = "Stochastical functions"):
 	return ET
 
 def ccp_dist(n, t) -> FncDescription(category = "Stochastical functions"):
-	"""Gives the probabilities of the coupon collector's problem: where there
+	"""\
+	Gives the probabilities of the coupon collector's problem: where there
 	are n types of coupons and t draws, what are the probabilites after those t
 	draws to receive 0, 1, 2, ... n different types of token."""
 
@@ -1091,7 +1093,8 @@ def ccp_dist(n, t) -> FncDescription(category = "Stochastical functions"):
 	return v
 
 def ccp(n, t) -> FncDescription(category = "Stochastical functions"):
-	"""Gives the probability of the coupon collector's problem: where there are
+	"""\
+	Gives the probability of the coupon collector's problem: where there are
 	n types of coupons and t draws, what is the probabilitiy that among the t
 	draws every of the n types of coupon is present at least once."""
 
@@ -1100,7 +1103,8 @@ def ccp(n, t) -> FncDescription(category = "Stochastical functions"):
 	return probabilities[n]
 
 def ccp_hp(n, t) -> FncDescription(category = "Stochastical functions"):
-	"""Gives the number of different coupon occurrences that have the highest
+	"""\
+	Gives the number of different coupon occurrences that have the highest
 	probability of appearing for n types of coupons after t tries."""
 
 	probabilities = ccp_dist(n, t)
