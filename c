@@ -1117,6 +1117,13 @@ def ccp_hp(n, t) -> FncDescription(category = "Stochastical functions"):
 
 	return high_index
 
+def ccp_avg(n, t) -> FncDescription(category = "Stochastical functions"):
+	"""\
+	Gives the average number of different discovered coupons with n different
+	types and t draws."""
+	probabilities = ccp_dist(n, t)
+	return sum([ occurrences * p for (occurrences, p) in enumerate(probabilities) ])
+
 def binom(n, p, min_p = 0.001) -> FncDescription(category = "Stochastical functions"):
 	"""\
 	For n individuals with a probability of p each, give the probability
