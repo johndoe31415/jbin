@@ -1055,7 +1055,10 @@ def nPr(n, r) -> FncDescription(category = "Stochastical functions"):
 
 def nCr(n, r) -> FncDescription(category = "Stochastical functions"):
 	"""Gives the number of combinations of r out of n."""
-	return nPr(n, r) // math.factorial(r)
+	if r <= n // 2:
+		return nPr(n, r) // math.factorial(r)
+	else:
+		return nCr(n, n - r)
 
 def ccp_ev(n) -> FncDescription(category = "Stochastical functions"):
 	"""\
