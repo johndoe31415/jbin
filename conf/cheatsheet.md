@@ -89,12 +89,11 @@ WantedBy=default.target
 
 ## GPT UEFI boot
   * apt-get install grub-efi-amd64 efivar
-  * vfat partition type EFI System, mount at /boot/efi
+  * vfat partition type EFI System (~128 MiB), mount at /boot/efi
+  * ext4 partition type Linux (~1 GiB), mount at /boot
   * modprobe efivars
   * mount -t efivarfs efivarfs /sys/firmware/efi/efivars
-  * grub-install --efi-directory=/boot/efi --target=x86_64-efi /dev/sda
-  * mkdir -p /boot/efi/EFI/boot/
-  * cp /boot/efi/EFI/debian/grubx64.efi /boot/efi/EFI/boot/bootx64.efi
+  * grub-install --efi-directory=/boot/efi --target=x86_64-efi /dev/sdx
 
 ## Using lirc/Iguanaworks USB to TX
   * TX works with stock kernel module
@@ -104,3 +103,17 @@ WantedBy=default.target
   * irsend list "" ""
   * irsend list fooremote ""
   * irsend send_once fooremote KEY_UP
+
+## Creating Windwows10 USB boot stick
+  * Partition MBR:
+     - one primary marked bootable, type 0xc
+     - seocnd primary type 0x7
+  * Format first partition with FAT32: mkfs.vfat -F32 /dev/sdx1
+  * Format second partition with NTFS: mkfs.ntfs -Q /dev/sdx2
+  * Loopmount ISO image to /tmp/iso and USB stick to /tmp/fat and /tmp/ntfs
+  * rsync --exclude sources -r /tmp/iso/. /tmp/fat/
+  * mkdir /tmp/fat/sources
+  * cp /tmp/iso/sources/boot.wim /tmp/fat/sources
+  * rsync -r /tmp/iso/. /tmp/ntfs/
+  * umount /tmp/fat; umount /tmp/ntfs; sync
+  * Boot using UEFI
