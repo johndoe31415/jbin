@@ -1332,6 +1332,8 @@ def sci(value, significant_digits = 3) -> FncDescription(category = "Misc"):
 
 def unify(value, significant_digits = 3) -> FncDescription(category = "Misc"):
 	"""Converts a value to a unified string."""
+	if value < 0:
+		return "-" + unify(-value)
 	known_powers = [
 		(-18, "a"),
 		(-15, "f"),
