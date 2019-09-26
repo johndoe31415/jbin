@@ -59,7 +59,7 @@ def process_cfile(cfile):
 			if result["keyword_pure"] is not None:
 				# PURE or CONST function
 				continue
-		
+
 			if ("__" in result["prototype"]) and not ("__attribute__" in result["prototype"]):
 				# Do not export this
 				continue
@@ -67,15 +67,15 @@ def process_cfile(cfile):
 			if result["prototype"].startswith("ISR("):
 				# Ingore ISRs
 				continue
-			
+
 			if result["prototype"].startswith("int main("):
 				# Ignore main function
 				continue
-			
+
 			if not ("(") in result["prototype"]:
 				# Structure declaration or similar, ignore
 				continue
-			
+
 			if result["prototype"].rstrip().endswith("="):
 				# Ignore array declarations
 				continue
@@ -94,7 +94,7 @@ def fileexists(filename):
 prototypes = process_cfile(cfile)
 if not fileexists(hfile):
 	f = open(hfile, "w")
-	hfiledef = "__" + os.path.basename(hfile).replace(".", "_").upper() + "__"
+	hfiledef = "__" + os.path.basename(hfile).replace(".", "_").replace("-", "_").upper() + "__"
 	print("#ifndef %s" % (hfiledef), file = f)
 	print("#define %s" % (hfiledef), file = f)
 	print(file = f)
