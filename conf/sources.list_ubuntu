@@ -2,21 +2,22 @@
 # 18.04 bionic
 # 18.10 cosmic
 # 19.04 disco
+# 19.10 eoan
 
 # hostname prefix
 # 	old 		old-releases
 # 	current		ftp.halifax.rwth-aachen.de
 
-deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic main restricted
-deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic multiverse
-deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic universe
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ disco main restricted
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ disco multiverse
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ disco universe
 
-deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic-updates main restricted
-deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic-updates multiverse
-deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic-updates universe
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ disco-updates main restricted
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ disco-updates multiverse
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ disco-updates universe
 
-deb http://security.ubuntu.com/ubuntu cosmic-security main restricted
-deb http://security.ubuntu.com/ubuntu cosmic-security multiverse
-deb http://security.ubuntu.com/ubuntu cosmic-security universe
+deb http://security.ubuntu.com/ubuntu disco-security main restricted
+deb http://security.ubuntu.com/ubuntu disco-security multiverse
+deb http://security.ubuntu.com/ubuntu disco-security universe
 
-deb http://ftp.halifax.rwth-aachen.de/ubuntu/ cosmic-backports main restricted universe multiverse
+deb http://ftp.halifax.rwth-aachen.de/ubuntu/ disco-backports main restricted universe multiverse
