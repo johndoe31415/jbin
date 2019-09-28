@@ -23,13 +23,31 @@
 import subprocess
 import time
 import collections
+import sys
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+
+parser = FriendlyArgumentParser(description = "Put all CPUs of a system under stress and monitor the temperature while it's happening.")
+parser.add_argument("-s", "--sensors", choices = [ "lm-sensors", "rpi" ], default = "lm-sensors", help = "Source of the sensor data to use. Defaults to %(default)s and can be one of %(choices)s.")
+parser.add_argument("-d", "--delay", metavar = "secs", type = float, default = 5, help = "Time inbetween measurement in seconds. Defaults to %(default).1f.")
+args = parser.parse_args(sys.argv[1:])
+
 
 class TempMonitor():
-	def __init__(self):
+	def __init__(self, args):
+		self._args = args
 		self._max_temp = 0
-		self._initial_temp = self.sensors_get_temp()
+		self._initial_temp = self.get_temperature()
 
-	def sensors_get_temp(self):
+	def get_temperature(self):
+		if self._args.sensors == "lm-sensors":
+			return self._lm_sensors_get_temp()
+		elif self._args.sensors == "rpi":
+			return self._rpi_get_temp()
+		else:
+			raise NotImplementedError(self._args.sensors)
+
+	def _lm_sensors_get_temp(self):
 		stdout = subprocess.check_output([ "sensors", "-u", "coretemp-*" ]).decode("ascii")
 		name = None
 		temperatures = collections.OrderedDict()
@@ -43,13 +61,28 @@ class TempMonitor():
 		self._max_temp = max(self._max_temp, max(temperatures.values()))
 		return temperatures
 
+	def _rpi_get_temp(self):
+		stdout = subprocess.check_output([ "vcgencmd", "measure_temp" ]).decode("ascii")
+		stdout = stdout.rstrip("\r\n")
+		assert(stdout.startswith("temp="))
+		stdout = stdout[5:]
+		assert(stdout.endswith("'C"))
+		stdout = stdout[:-2]
+		cputemp = float(stdout)
+		return collections.OrderedDict([ ("CPU", cputemp) ])
+
+	def get_clkfreq_mhz(self):
+		with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq") as f:
+			return int(f.read().rstrip("\r\n")) / 1000
+
 	def print(self, time_secs):
 		time_secs = round(time_secs)
-		sensors_data = self.sensors_get_temp()
+		sensors_data = self.get_temperature()
 		sensors_str = ", ".join("%s = %4.1f°C" % (name, temp) for (name, temp) in sensors_data.items())
 		avg_temp = sum(sensors_data.values()) / len(sensors_data)
 		maxdiff = max((now - initial) for (now, initial) in zip(sensors_data.values(), self._initial_temp.values()))
-		print("%2d:%02d: Avg %4.1f, Max %4.1f, Delta %+5.1f: %s" % (time_secs // 60, time_secs % 60, avg_temp, self._max_temp, maxdiff, sensors_str))
+		clkfreq = self.get_clkfreq_mhz()
+		print("%2d:%02d: %4.0f MHz, Avg %4.1f, Max %4.1f, Delta %+5.1f: %s" % (time_secs // 60, time_secs % 60, clkfreq, avg_temp, self._max_temp, maxdiff, sensors_str))
 
 cpu_count = 0
 with open("/proc/cpuinfo") as f:
@@ -57,7 +90,7 @@ with open("/proc/cpuinfo") as f:
 		if line.startswith("processor"):
 			cpu_count += 1
 
-temp_monitor = TempMonitor()
+temp_monitor = TempMonitor(args)
 
 procs = [ subprocess.Popen([ "dd", "if=/dev/urandom", "of=/dev/null", "bs=1M" ], stdout = subprocess.DEVNULL) for i in range(cpu_count) ]
 print("Started %d processes." % (len(procs)))
@@ -67,7 +100,7 @@ try:
 	while True:
 		t = time.time() - t0
 		temp_monitor.print(time_secs = t)
-		time.sleep(5)
+		time.sleep(args.delay)
 finally:
 	for proc in procs:
 		proc.kill()
