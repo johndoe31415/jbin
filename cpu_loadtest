@@ -37,6 +37,7 @@ class TempMonitor():
 	def __init__(self, args):
 		self._args = args
 		self._max_temp = 0
+		self._max_temp_at = 0
 		self._initial_temp = self.get_temperature()
 
 	def get_temperature(self):
@@ -77,7 +78,11 @@ class TempMonitor():
 	def print(self, time_secs):
 		time_secs = round(time_secs)
 		sensors_data = self.get_temperature()
-		self._max_temp = max(self._max_temp, max(sensors_data.values()))
+
+		maxtemp = max(sensors_data.values())
+		if maxtemp > self._max_temp:
+			self._max_temp = maxtemp
+			self._max_temp_at = time_secs
 		sensors_str = ", ".join("%s = %4.1f°C" % (name, temp) for (name, temp) in sensors_data.items())
 		avg_temp = sum(sensors_data.values()) / len(sensors_data)
 		maxdiff = max((now - initial) for (now, initial) in zip(sensors_data.values(), self._initial_temp.values()))
@@ -86,7 +91,7 @@ class TempMonitor():
 		pieces = [ "%2d:%02d: %4.0f MHz" % (time_secs // 60, time_secs % 60, clkfreq) ]
 		if len(sensors_data) > 1:
 			pieces += [ "Avg %4.1f" % (avg_temp) ]
-		pieces += [ "Max %4.1f" % (self._max_temp) ]
+		pieces += [ "Max %4.1f at %d:%02d" % (self._max_temp, self._max_temp_at // 60, self._max_temp_at % 60) ]
 		pieces += [ "Delta %+5.1f" % (maxdiff) ]
 		pieces += [ sensors_str ]
 		print(", ".join(pieces))
