@@ -1,0 +1,77 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	rename_user: Rename a username, groupname and home directory
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import pwd
+import grp
+import subprocess
+
+if len(sys.argv) != 3:
+	print("%s [old username] [new username]" % (sys.argv[0]), file = sys.stderr)
+	print(file = sys.stderr)
+	print("Renames a user name, possibly group name and home directory.", file = sys.stderr)
+	sys.exit(1)
+
+(old_name, new_name) = sys.argv[1:]
+try:
+	user = pwd.getpwnam(old_name)
+except KeyError:
+	print("Old user \"%s\" does not exist." % (old_name))
+	sys.exit(1)
+try:
+	pwd.getpwnam(new_name)
+	print("New user \"%s\" exists." % (new_name))
+	sys.exit(1)
+except KeyError:
+	pass
+
+group = grp.getgrgid(user.pw_gid)
+if group.gr_name == old_name:
+	# Rename group as well
+	try:
+		new_group = grp.getgrnam(new_name)
+		print("New group \"%s\" exists." % (new_name))
+		sys.exit(1)
+	except KeyError:
+		pass
+
+if user.pw_dir.endswith("/" + old_name):
+	# Rename home dir as well
+	new_dirname = user.pw_dir[:-len(old_name)] + new_name
+	if not os.path.isdir(user.pw_dir):
+		print("Old home directory \"%s\" does not exist." % (user.pw_dir))
+		sys.exit(1)
+	if os.path.exists(new_dirname):
+		print("New home directory \"%s\" already exists." % (new_dirname))
+		sys.exit(1)
+
+# Rename user
+subprocess.check_call([ "usermod", "-l", new_name, old_name ])
+if group.gr_name == old_name:
+	# Rename group name as well
+	subprocess.check_call([ "groupmod", "-n", new_name, old_name ])
+if user.pw_dir.endswith("/" + old_name):
+	# Rename home directory as well
+	new_dirname = user.pw_dir[:-len(old_name)] + new_name
+	os.rename(user.pw_dir, new_dirname)
+	subprocess.check_call([ "usermod", "-d", new_dirname, new_name ])
