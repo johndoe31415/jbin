@@ -58,7 +58,6 @@ class TempMonitor():
 				temp = float(line.split(":")[1])
 				temperatures[name] = temp
 				name = None
-		self._max_temp = max(self._max_temp, max(temperatures.values()))
 		return temperatures
 
 	def _rpi_get_temp(self):
@@ -78,11 +77,19 @@ class TempMonitor():
 	def print(self, time_secs):
 		time_secs = round(time_secs)
 		sensors_data = self.get_temperature()
+		self._max_temp = max(self._max_temp, max(sensors_data.values()))
 		sensors_str = ", ".join("%s = %4.1f°C" % (name, temp) for (name, temp) in sensors_data.items())
 		avg_temp = sum(sensors_data.values()) / len(sensors_data)
 		maxdiff = max((now - initial) for (now, initial) in zip(sensors_data.values(), self._initial_temp.values()))
 		clkfreq = self.get_clkfreq_mhz()
-		print("%2d:%02d: %4.0f MHz, Avg %4.1f, Max %4.1f, Delta %+5.1f: %s" % (time_secs // 60, time_secs % 60, clkfreq, avg_temp, self._max_temp, maxdiff, sensors_str))
+
+		pieces = [ "%2d:%02d: %4.0f MHz" % (time_secs // 60, time_secs % 60, clkfreq) ]
+		if len(sensors_data) > 1:
+			pieces += [ "Avg %4.1f" % (avg_temp) ]
+		pieces += [ "Max %4.1f" % (self._max_temp) ]
+		pieces += [ "Delta %+5.1f" % (maxdiff) ]
+		pieces += [ sensors_str ]
+		print(", ".join(pieces))
 
 cpu_count = 0
 with open("/proc/cpuinfo") as f:
