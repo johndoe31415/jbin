@@ -41,6 +41,8 @@ pathadd() {
 
 PATH=""
 pathadd "${JBIN_DIR}"
+pathadd "${HOME}/bin"
+pathadd "${HOME}/.local/bin"
 pathadd /usr/local/sbin
 pathadd /usr/local/bin
 pathadd /usr/sbin
@@ -53,8 +55,6 @@ if [ "$EUID" != "0" ] && [ "$USER" != "root" ]; then
 else
 	pathadd "${JBIN_DIR}/sbin"
 fi
-pathadd ${HOME}/bin
-pathadd ${HOME}/.local/bin
 export PATH
 
 
