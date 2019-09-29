@@ -71,9 +71,23 @@ class TempMonitor():
 		cputemp = float(stdout)
 		return collections.OrderedDict([ ("CPU", cputemp) ])
 
-	def get_clkfreq_mhz(self):
+	def _get_clkfreq_mhz_sysfs(self):
 		with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq") as f:
 			return int(f.read().rstrip("\r\n")) / 1000
+
+	def _get_clkfreq_mhz_rpi(self):
+		stdout = subprocess.check_output([ "vcgencmd", "measure_clock", "arm" ]).decode("ascii")
+		stdout = stdout.rstrip("\r\n")
+		stdout = stdout.split("=")
+		return int(stdout[1]) / 1e6
+
+	def get_clkfreq_mhz(self):
+		if self._args.sensors == "lm-sensors":
+			return self._get_clkfreq_mhz_sysfs()
+		elif self._args.sensors == "rpi":
+			return self._get_clkfreq_mhz_rpi()
+		else:
+			raise NotImplementedError(self._args.sensors)
 
 	def print(self, time_secs):
 		time_secs = round(time_secs)
