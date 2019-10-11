@@ -117,3 +117,15 @@ WantedBy=default.target
   * rsync -r /tmp/iso/. /tmp/ntfs/
   * umount /tmp/fat; umount /tmp/ntfs; sync
   * Boot using UEFI
+
+## Setting nameserver when using systemd-resolved
+`resolvectl dns eth0 8.8.8.8`
+
+## Useful tcpdump command lines
+  * Monitor all DNS requests
+    `stdbuf -o 0 tcpdump -n -i eth0 "src 192.168.1.999 and udp and port 53" >dns_list.txt 2>&1`
+
+## /etc/sudoers
+```
+joe ALL=NOPASSWD: /usr/jbin/sbin/boot_windows
+```
