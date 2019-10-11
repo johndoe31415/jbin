@@ -76,10 +76,10 @@ WantedBy=default.target
   * `loginctl enable-linger joe`
 
 ## Postgres setup
-  * CREATE DATABASE foodb;
-  * CREATE USER foouser WITH ENCRYPTED PASSWORD 'foopass';
-  * GRANT ALL PRIVILEGES ON DATABASE foodb TO foouser;
-  * Show tables: \dt
+  * `CREATE DATABASE foodb;`
+  * `CREATE USER foouser WITH ENCRYPTED PASSWORD 'foopass';`
+  * `GRANT ALL PRIVILEGES ON DATABASE foodb TO foouser;`
+  * Show tables: `\dt`
 
 ## Bugfix: Ubuntu/Thunderbird shows huge emojis in subject line
   * apt-get install fonts-symbola
