@@ -24,12 +24,14 @@ import subprocess
 import time
 import collections
 import sys
+import json
 from FriendlyArgumentParser import FriendlyArgumentParser
-
 
 parser = FriendlyArgumentParser(description = "Put all CPUs of a system under stress and monitor the temperature while it's happening.")
 parser.add_argument("-s", "--sensors", choices = [ "lm-sensors", "rpi" ], default = "lm-sensors", help = "Source of the sensor data to use. Defaults to %(default)s and can be one of %(choices)s.")
 parser.add_argument("-d", "--delay", metavar = "secs", type = float, default = 5, help = "Time inbetween measurement in seconds. Defaults to %(default).1f.")
+parser.add_argument("-l", "--logfile", metavar = "filename", help = "Log the results to the given text file.")
+parser.add_argument("-j", "--json-logfile", metavar = "filename", help = "Log the results to the given JSON file.")
 args = parser.parse_args(sys.argv[1:])
 
 
@@ -39,6 +41,7 @@ class TempMonitor():
 		self._max_temp = 0
 		self._max_temp_at = 0
 		self._initial_temp = self.get_temperature()
+		self._datapoints = [ ]
 
 	def get_temperature(self):
 		if self._args.sensors == "lm-sensors":
@@ -89,8 +92,8 @@ class TempMonitor():
 		else:
 			raise NotImplementedError(self._args.sensors)
 
-	def print(self, time_secs):
-		time_secs = round(time_secs)
+	def print(self, time_secs_float):
+		time_secs = round(time_secs_float)
 		sensors_data = self.get_temperature()
 
 		maxtemp = max(sensors_data.values())
@@ -108,7 +111,22 @@ class TempMonitor():
 		pieces += [ "Max %4.1f at %d:%02d" % (self._max_temp, self._max_temp_at // 60, self._max_temp_at % 60) ]
 		pieces += [ "Delta %+5.1f" % (maxdiff) ]
 		pieces += [ sensors_str ]
-		print(", ".join(pieces))
+		line = ", ".join(pieces)
+		print(line)
+		if self._args.logfile:
+			with open(self._args.logfile, "a") as f:
+				print(line, file = f)
+		if self._args.json_logfile:
+			data_point = {
+				"time":			time_secs_float,
+				"avg_temp":		avg_temp,
+				"clkfreq":		clkfreq,
+				"temperature":	list(sensors_data.items()),
+			}
+			self._datapoints.append(data_point)
+			with open(self._args.json_logfile, "w") as f:
+				json.dump(self._datapoints, f)
+				f.write("\n")
 
 cpu_count = 0
 with open("/proc/cpuinfo") as f:
@@ -125,7 +143,7 @@ try:
 	t0 = time.time()
 	while True:
 		t = time.time() - t0
-		temp_monitor.print(time_secs = t)
+		temp_monitor.print(time_secs_float = t)
 		time.sleep(args.delay)
 finally:
 	for proc in procs:
