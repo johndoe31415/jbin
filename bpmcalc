@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	bpmcalc: Calculate beats/minute given a constant input
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import time
+import numpy
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Calculate beats/minute")
+parser.add_argument("-d", "--discard", metavar = "count", type = int, default = 3, help = "Discard the first n values. Defaults to %(default)d.")
+args = parser.parse_args(sys.argv[1:])
+
+times = [ ]
+last = None
+discard = args.discard
+while True:
+	input("Next beat...")
+	now = time.time()
+	if (last is not None) and (discard == 0):
+		tdiff = now - last
+		times.append(tdiff)
+	elif discard > 0:
+		discard -= 1
+	last = now
+
+	if len(times) > 0:
+		def show(text, value):
+			if value > 0:
+				print("%25s: %.2f sec/beat = %.2f beats/sec = %.1f BPM" % (text, value, 1 / value, 60 / value))
+		show("Average", numpy.average(times))
+
+		median = numpy.percentile(times, 50)
+		show("Median", median)
+
+		for margin in [ 10, 25, 33 ]:
+			lower = numpy.percentile(times, margin)
+			upper = numpy.percentile(times, 100 - margin)
+			corrected = [ value for value in times if (lower <= value <= upper) ]
+			if len(corrected) > 0:
+				show("Without %d%% (%d values)" % (margin, len(corrected)), numpy.average(corrected))
+
