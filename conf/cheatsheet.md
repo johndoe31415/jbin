@@ -52,8 +52,6 @@ Then, `netplan apply`
 ## Simple systemd user service
   * `mkdir -p ~/.local/share/systemd/user`
   * `cat >~/.local/share/systemd/user/simple.service`
-  * `systemctl --user enable simple`
-  * `loginctl enable-linger joe`
 
 ```
 [Unit]
@@ -74,6 +72,8 @@ WorkingDirectory=/home/joe/foo
 WantedBy=default.target
 ```
 
+  * `systemctl --user enable simple`
+  * `loginctl enable-linger joe`
 
 ## Postgres setup
   * CREATE DATABASE foodb;
