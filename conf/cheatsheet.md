@@ -50,10 +50,10 @@ Then, `netplan apply`
 
 
 ## Simple systemd user service
-  * mkdir -p ~/.local/share/systemd/user
-  * cat >~/.local/share/systemd/user/simple.service
-  * systemctl --user enable simple
-  * loginctl enable-linger joe
+  * `mkdir -p ~/.local/share/systemd/user`
+  * `cat >~/.local/share/systemd/user/simple.service`
+  * `systemctl --user enable simple`
+  * `loginctl enable-linger joe`
 
 ```
 [Unit]
@@ -64,6 +64,9 @@ After=network-online.target
 Type=simple
 ExecStart=/home/joe/foo.py
 WorkingDirectory=/home/joe/foo
+# For system units not running as root
+#User=nobody
+#Group=nobody
 
 [Install]
 # For system units:
