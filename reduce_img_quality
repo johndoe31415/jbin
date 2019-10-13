@@ -51,7 +51,7 @@ for infilename in args.infiles:
 
 	with tempfile.NamedTemporaryFile(prefix = "imgconvert_", suffix = "." + args.outtype) as tmpfile:
 		tmpfile.close()
-		cmd = [ "convert", "-quality", str(args.quality), "-resize", args.size ]
+		cmd = [ "convert", "-auto-orient", "-quality", str(args.quality), "-resize", args.size ]
 		if not args.keep_meta:
 			cmd += [ "-strip" ]
 		cmd += [ infilename, tmpfile.name ]
