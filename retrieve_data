@@ -170,11 +170,14 @@ class Retriever():
 					print("%s%s" % (prefix, src_base))
 				else:
 					print("%s%s -> %s" % (prefix, src_base, dst_base))
-			shutil.move(src_file, dst_file)
+			try:
+				shutil.move(src_file, dst_file)
+				if self._config["options"].get("chmod") is not None:
+					permissions = int(self._config["options"]["chmod"], 8)
+					os.chmod(dst_file, permissions)
+			except OSError as e:
+				print("%s: %s" % (src_file, str(e)), file = sys.stderr)
 
-			if self._config["options"].get("chmod") is not None:
-				permissions = int(self._config["options"]["chmod"], 8)
-				os.chmod(dst_file, permissions)
 
 	def _sync(self):
 		if self._config["options"].get("sync"):
