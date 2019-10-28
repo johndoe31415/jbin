@@ -1,0 +1,111 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	nmx: Show extended "nm" information about ELF binaries
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import subprocess
+import re
+import enum
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+class SymbolType(enum.Enum):
+	AbsoluteSymbolGlobal = "A"
+	AbsoluteSymbolLocal = "a"
+	UnititializedDataBSSGlobal = "B"
+	UnititializedDataBSSLocal = "b"
+	Common = "C"
+	InitializedDataGlobal = "D"
+	InitializedDataLocal = "d"
+	InitializedDataSmallObjGlobal = "G"
+	InitializedDataSmallObjLocal = "g"
+	IndirectFunction = "i"
+	IndirectReference = "I"
+	DebuggingSymbol = "N"
+	StackUnwindSection = "p"
+	ReadOnlyGlobal = "R"
+	ReadOnlyLocal = "r"
+	DataSectionSmallSymbolGlobal = "S"
+	DataSectionSmallSymbolLocal = "s"
+	TextSymbolGlobal = "T"
+	TextSymbolLocal = "t"
+	UndefinedSymbol = "U"
+	UniqueGlobalSymbol = "u"
+	WeakObjectWithDefault = "V"
+	WeakObjectWithoutDefault = "v"
+	WeakSymbolWithoutDefault = "W"
+	WeakSymbolWithDefault = "w"
+	Unknown = "?"
+
+parser = FriendlyArgumentParser(description = "Shows information about ELF executables.")
+parser.add_argument("-b", "--binary", metavar = "filename", type = str, default = "nm", help = "'nm' binary to use. Defaults to %(default)s.")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-r", "--ram-only", action = "store_true", help = "Only show symbols that reside in RAM.")
+group.add_argument("-t", "--text-only", action = "store_true", help = "Only show symbols that reside in the text section.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("elffile", metavar = "elffile", type = str, help = "Binary to analyze")
+args = parser.parse_args(sys.argv[1:])
+
+symbol_letters = "".join(enumvalue.value for (key, enumvalue) in enumerate(SymbolType))
+regex = re.compile("((?P<addr>[0-9a-fA-F]+)\s+)?((?P<size>[0-9a-fA-F]+)\s+)?\s*(?P<symtype>[" + symbol_letters + "])\s+(?P<name>[_@.A-Za-z0-9]+)")
+
+symbols = [ ]
+stdout = subprocess.check_output([ args.binary, "-S", args.elffile ])
+stdout = stdout.decode().split("\n")
+for (occurrence, line) in enumerate(stdout):
+	match = regex.fullmatch(line)
+	if match:
+		match = match.groupdict()
+		if match["addr"] is not None:
+			match["addr"] = int(match["addr"], 16)
+		if match["size"] is not None:
+			match["size"] = int(match["size"], 16)
+		match["occurrence"] = occurrence
+		match["symtype"] = SymbolType(match["symtype"])
+		symbols.append(match)
+	else:
+		if args.verbose >= 2:
+			print("Unmatched: %s" % (line))
+
+if args.ram_only:
+	ram_symbols = set([
+		SymbolType.UnititializedDataBSSGlobal,
+		SymbolType.UnititializedDataBSSLocal,
+		SymbolType.InitializedDataGlobal,
+		SymbolType.InitializedDataLocal,
+		SymbolType.InitializedDataSmallObjGlobal,
+		SymbolType.InitializedDataSmallObjLocal,
+		SymbolType.DataSectionSmallSymbolGlobal,
+		SymbolType.DataSectionSmallSymbolLocal,
+	])
+	symbols = [ symbol for symbol in symbols if symbol["symtype"] in ram_symbols ]
+elif args.text_only:
+	ram_symbols = set([
+		SymbolType.TextSymbolGlobal,
+		SymbolType.TextSymbolLocal,
+	])
+	symbols = [ symbol for symbol in symbols if symbol["symtype"] in ram_symbols ]
+
+
+symbols = [ symbol for symbol in symbols if symbol["size"] is not None ]
+#symbols.sort(key = lambda symbol: symbol["addr"])
+symbols.sort(key = lambda symbol: symbol["size"])
+for symbol in symbols:
+	print("%8x %8d %-30s %s" % (symbol["addr"], symbol["size"], symbol["symtype"].name, symbol["name"]))
