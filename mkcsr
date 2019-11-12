@@ -1,0 +1,85 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	mkcsr: Create a certificate signing request
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import subprocess
+import tempfile
+import textwrap
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Create a Certificate Signing Request (CSR)")
+parser.add_argument("-d", "--dns", metavar = "fqdn", action = "append", default =  [ ], help = "Add this Subject Alternative DNS name to the X.509 extensions. Can be specified multiple times.")
+parser.add_argument("-g", "--genkey", choices = [ "secp384r1", "secp256r1", "rsa4096" ], help = "Generate the key file as well if it does not exist and use the given specification. Can be one of %(choices)s.")
+parser.add_argument("-f", "--force", action = "store_true", help = "Overwrite files without asking twice.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Show CSR in the end.")
+parser.add_argument("input_key", metavar = "input_key", type = str, help = "Private key file to use for the CSR.")
+parser.add_argument("output_pem", metavar = "output_pem", type = str, help = "File to write the CSR to.")
+args = parser.parse_args(sys.argv[1:])
+
+if len(args.dns) == 0:
+	print("Must specify at least one DNS name.")
+	sys.exit(1)
+
+if not os.path.isfile(args.input_key):
+	if args.genkey is not None:
+		# Generate key
+		if args.genkey.startswith("rsa"):
+			# Generate RSA key
+			modulus_bits = int(args.genkey[3:])
+			subprocess.check_call([ "openssl", "genrsa", "-out", args.input_key, str(modulus_bits) ])
+		else:
+			# Generate ECC key
+			subprocess.check_call([ "openssl", "ecparam", "-genkey", "-name", args.genkey, "-out", args.input_key ])
+	else:
+		 print("Key file does not exist: %s" % (args.input_key))
+		 sys.exit(1)
+
+if os.path.exists(args.output_pem) and not args.force:
+	print("Already exists: %s" % (args.output_pem))
+	sys.exit(1)
+
+with tempfile.NamedTemporaryFile(prefix = "openssl_config_", suffix = ".conf", mode = "w") as f:
+	config = textwrap.dedent("""\
+	[req]
+	prompt = no
+	req_extensions = req_ext
+	distinguished_name = dn
+
+	[dn]
+	CN = %s
+
+	[req_ext]
+	subjectAltName = @alt_names
+
+	[alt_names]
+	""" % (args.dns[0]))
+	for (nid, name) in enumerate(args.dns):
+		config += "DNS.%d = %s\n" % (nid, name)
+	print(config, file = f)
+	f.flush()
+
+	cmd = [ "openssl", "req", "-new", "-sha256", "-out", args.output_pem, "-config", f.name, "-key", args.input_key ]
+	subprocess.check_call(cmd)
+
+	if args.verbose:
+		subprocess.check_call([ "openssl", "req", "-noout", "-text", "-in", args.output_pem ])
