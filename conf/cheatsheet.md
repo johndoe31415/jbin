@@ -135,9 +135,3 @@ WantedBy=default.target
 ```
 joe ALL=NOPASSWD: /usr/jbin/sbin/boot_windows
 ```
-
-# rssh with chroot
-```
-# chmod u+s /usr/lib/rssh/rssh_chroot_helper
-# 
-```

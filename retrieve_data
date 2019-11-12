@@ -200,6 +200,8 @@ class Retriever():
 		used_basenames = set()
 		destination_names = { }
 		for src_name in sorted(src_names):
+			print(src_name)
+
 			for i in range(1000):
 				(base, ext) = os.path.splitext(os.path.basename(src_name))
 				if self._config["options"].get("lowercase_ext"):
