@@ -40,9 +40,15 @@ class Retriever():
 	_DEFAULT_CONFIG = {
 		"sources": [
 			{
-				"dir": "/media/${USER}/1234-1234/DCIM",
-				"glob": [ "*.JPG" ],
-				"umount":			"${SRCDIR}/..",
+				"subs": {
+					"MOUNTPOINT":	"/media/${USER}/1234-1234/",
+				},
+				"source": [
+					"${MOUNTPOINT}DCIM/*.JPG",
+					"${MOUNTPOINT}DCIM/*.NEF",
+					"${MOUNTPOINT}DCIM/1??____/*.NEF",
+				],
+				"umount":	"${MOUNTPOINT}",
 			},
 		],
 		"destination": {
@@ -58,7 +64,7 @@ class Retriever():
 	def __init__(self, args):
 		self._args = args
 		now = datetime.datetime.now()
-		self._subs = {
+		self._base_subs = {
 			"USER": os.environ.get("USER"),
 			"YEAR": now.strftime("%Y"),
 			"MONTH": now.strftime("%m"),
@@ -121,41 +127,30 @@ class Retriever():
 				pass
 		return None
 
-	def _glob(self, src_dir, globmask):
-		for filename in glob.glob(src_dir + "/" + globmask):
-			if os.path.isfile(filename):
-				yield filename
+	def _resolve_subs(self, source):
+		self._subs = dict(self._base_subs)
+		if "subs" in source:
+			for (key, value) in sorted(source["subs"].items()):
+				self._subs[key] = self._replace(value)
 
-	def _run_source(self, source):
-		src_dir = os.path.realpath(self._replace(source["dir"]))
-		self._subs["SRCDIR"] = os.path.realpath(src_dir)
-		src_files = set()
-		for globmask in source["glob"]:
-			src_files |= set(self._glob(src_dir, globmask))
-		if len(src_files) == 0:
-			print("No matching files found in source directory: %s" % (src_dir))
-			sys.exit(1)
-		src_files = list(sorted(src_files))
-
+	def _run_source(self, source, move_plan):
+		# Retrieve destination directory
 		dest_dir = self._get_dest_dir()
 		if dest_dir is None:
 			print("Failed to allocate destination directory.")
 			sys.exit(1)
 
+		# Determine size of all files
 		filesizes = { }
-		for src_file in src_files:
-			filesizes[src_file] =  os.stat(src_file).st_size
+		for (src_file, dest_basename) in move_plan.items():
+			filesizes[src_file] = os.stat(src_file).st_size
 		total_size = sum(filesizes.values())
-		print("Moving %d files (%.0f MiB) to %s" % (len(src_files), total_size / 1024 / 1024, dest_dir))
+		print("Moving %d files (%.0f MiB) to %s" % (len(move_plan), total_size / 1024 / 1024, dest_dir))
 
+		# Finally move files
 		copied_size = 0
-		for src_file in src_files:
-			dst_base = os.path.basename(src_file)
-			if self._config["options"].get("lowercase_ext"):
-				(head, tail) = os.path.splitext(dst_base)
-				dst_base = head + tail.lower()
-
-			dst_file = dest_dir + "/" + dst_base
+		for (src_file, dest_basename) in sorted(move_plan.items()):
+			dst_file = dest_dir + "/" + dest_basename
 			copied_size += filesizes[src_file]
 
 			if total_size > 0:
@@ -166,6 +161,7 @@ class Retriever():
 				print("%s%s -> %s" % (prefix, src_file, dst_file))
 			else:
 				src_base = os.path.basename(src_file)
+				dst_base = os.path.basename(dst_file)
 				if src_base == dst_base:
 					print("%s%s" % (prefix, src_base))
 				else:
@@ -177,7 +173,6 @@ class Retriever():
 					os.chmod(dst_file, permissions)
 			except OSError as e:
 				print("%s: %s" % (src_file, str(e)), file = sys.stderr)
-
 
 	def _sync(self):
 		if self._config["options"].get("sync"):
@@ -192,11 +187,43 @@ class Retriever():
 				print("Unmounting %s..." % (umount_dir))
 			subprocess.check_call([ "umount", umount_dir ])
 
+	def _glob(self, source):
+		self._resolve_subs(source)
+		src_files = set()
+		for globmask in source["source"]:
+			globmask = self._replace(globmask)
+			for filename in glob.glob(globmask):
+				src_files.add(filename)
+		return src_files
+
+	def _assign_destination_basenames(self, src_names):
+		used_basenames = set()
+		destination_names = { }
+		for src_name in sorted(src_names):
+			print(src_name)
+
+			for i in range(1000):
+				(base, ext) = os.path.splitext(os.path.basename(src_name))
+				if self._config["options"].get("lowercase_ext"):
+					ext = ext.lower()
+				if i == 0:
+					potential_destination_basename = "%s%s" % (base, ext)
+				else:
+					potential_destination_basename = "%s_%d%s" % (base, i, ext)
+				if potential_destination_basename not in used_basenames:
+					used_basenames.add(potential_destination_basename)
+					destination_names[src_name] = potential_destination_basename
+					break
+			else:
+				raise Exception("Unable to assign a non-conflicting destination basename to %s." % (src_name))
+		return destination_names
+
 	def run(self):
 		for source in self._config["sources"]:
-			srcdir = self._replace(source["dir"])
-			if os.path.isdir(srcdir):
-				self._run_source(source)
+			source_files = self._glob(source)
+			if len(source_files) > 0:
+				move_plan = self._assign_destination_basenames(source_files)
+				self._run_source(source, move_plan)
 				self._sync()
 				self._umount(source)
 				break
