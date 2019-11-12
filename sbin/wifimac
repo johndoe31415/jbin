@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	wifimac: Give the WiFi interface a new, randomized MAC address
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import re
+import sys
+import os
+import subprocess
+
+def get_interfaces():
+	interface_regex = re.compile("^\s*(?P<iface>\S+):\s+", flags = re.MULTILINE)
+	with open("/proc/net/dev") as f:
+		interface_proc = f.read()
+	interfaces = set()
+	for match in interface_regex.finditer(interface_proc):
+		interfaces.add(match.groupdict()["iface"])
+	return interfaces
+
+def is_wifi_interface(ifname):
+	return ifname.startswith("wlan") or ifname.startswith("wifi")
+
+def randmac():
+	mac = bytearray(os.urandom(6))
+	mac[0] &= ~0x01
+	mac[0] |= 0x02
+	return ":".join("%02x" % (c) for c in mac)
+
+
+wifi_interface_names = [ "wifi0", "wlan0" ]
+interfaces = get_interfaces()
+wifi_interfaces = list(sorted([ interface for interface in interfaces if is_wifi_interface(interface) ]))
+if len(wifi_interfaces) == 0:
+	print("No WiFi interfaces found (no match for %s)" % (", ".join(sorted(interfaces))))
+	sys.exit(1)
+
+wifi_interface = wifi_interfaces[0]
+new_mac = randmac()
+print("Assigning %s to %s" % (new_mac, wifi_interface))
+
+subprocess.call([ "nmcli", "device", "disconnect", wifi_interface ])
+subprocess.check_call([ "ifconfig", wifi_interface, "down" ])
+subprocess.check_call([ "ifconfig", wifi_interface, "hw", "ether", new_mac ])
+subprocess.check_call([ "ifconfig", wifi_interface, "up", "0.0.0.0" ])
+subprocess.call([ "nmcli", "device", "connect", wifi_interface ])
