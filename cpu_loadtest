@@ -25,6 +25,8 @@ import time
 import collections
 import sys
 import json
+import os
+import multiprocessing
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 parser = FriendlyArgumentParser(description = "Put all CPUs of a system under stress and monitor the temperature while it's happening.")
@@ -34,6 +36,40 @@ parser.add_argument("-l", "--logfile", metavar = "filename", help = "Log the res
 parser.add_argument("-j", "--json-logfile", metavar = "filename", help = "Log the results to the given JSON file.")
 args = parser.parse_args(sys.argv[1:])
 
+class LoadProcess(multiprocessing.Process):
+	def __init__(self):
+		multiprocessing.Process.__init__(self)
+		self._chunksize = 1024 * 1024
+		self._total_bytes_read = multiprocessing.Value("i")
+		self._child_pid = None
+		self._t0 = None
+		self._t1 = None
+
+	@property
+	def total_bytes_read(self):
+		return self._total_bytes_read.value
+
+	@property
+	def runtime(self):
+		if self._t0 is None:
+			return None
+		t1 = self._t1 if (self._t1 is not None) else time.time()
+		return t1 - self._t0
+
+	def run(self):
+		with open("/dev/urandom", "rb") as f:
+			while True:
+				read_bytes = f.read(self._chunksize)
+				self._total_bytes_read.value += len(read_bytes)
+
+	def start(self):
+		self._t0 = time.time()
+		multiprocessing.Process.start(self)
+
+	def end(self):
+		self.terminate()
+		self.join()
+		self._t1 = time.time()
 
 class TempMonitor():
 	def __init__(self, args):
@@ -134,7 +170,7 @@ with open("/proc/cpuinfo") as f:
 		if line.startswith("processor"):
 			cpu_count += 1
 
-temp_monitor = TempMonitor(args)
+temp_monitor = TempMonitor(args, load_procs)
 
 procs = [ subprocess.Popen([ "dd", "if=/dev/urandom", "of=/dev/null", "bs=1M" ], stdout = subprocess.DEVNULL) for i in range(cpu_count) ]
 print("Started %d processes." % (len(procs)))
