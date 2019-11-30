@@ -1,0 +1,63 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	geeqie-export-to-tempdir: Geeqie plugin to reduce image quality and store in /tmp
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import subprocess
+import contextlib
+import datetime
+
+desktop_entry = """\
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Export to Tempdir
+
+# call the helper script
+Exec=geeqie-export-to-tempdir %f
+
+# Desktop files that are usable only in Geeqie should be marked like this:
+Categories=X-Geeqie;
+OnlyShowIn=X-Geeqie;
+
+# It can be made verbose
+#X-Geeqie-Verbose=true
+"""
+application_dir = os.path.expanduser("~/.config/geeqie/applications/")
+desktop_file = application_dir + "JBinExportToTempdir.desktop"
+with contextlib.suppress(FileExistsError):
+	os.makedirs(application_dir)
+if not os.path.isfile(desktop_file):
+	with open(desktop_file, "w") as f:
+		f.write(desktop_entry)
+
+now = datetime.datetime.now()
+source_file = sys.argv[1]
+destination_file = "/tmp/geeqie_export_" + now.strftime("%Y_%m_%d_%H_%M_%S") + ".jpg"
+
+if os.path.isfile(destination_file):
+	raise Exception("Destination file already exists: %s" % (destination_file))
+
+command = [ "convert" ]
+command += [ "-auto-orient", "-quality", "80", "-resize", "1920x1080", "-strip" ]
+command += [ source_file, destination_file ]
+subprocess.check_call(command)
