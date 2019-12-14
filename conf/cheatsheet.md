@@ -8,37 +8,37 @@ passwd the first time around). It's probably not very useful for anyone else.
 
 
 ## debootstrap checklist
-  * During fdisk, do not forget `/boot` partition
-  * `debootstrap disco subdir http://ftp.halifax.rwth-aachen.de/ubuntu/`
-  * `debootstrap buster subdir http://ftp.de.debian.org/debian/`
-  * `chmod 000 /etc/update-motd.d/10-help-text `
-  * `apt-get install acl apt-file bzip2 convmv gnupg grub2 hdparm hexedit inetutils-tools kbd less linux-image-generic lm-sensors locales lshw lsof lzma man mlocate nano openssh-client openssh-server p7zip-full pciutils psmisc pwgen recode rsync screen sqlite3 unzip usbutils vim xz-utils net-tools`
-  * `vim /etc/fstab`
-  * `vim /etc/crypttab`
-  * `vim /etc/hostname`
-  * `passwd`
-  * `grub-install`
-  * `update-grub`
-  * `update-initramfs`
+  * During fdisk, do not forget /boot partition
+  * debootstrap disco subdir http://ftp.halifax.rwth-aachen.de/ubuntu/
+  * debootstrap buster subdir http://ftp.de.debian.org/debian/
+  * chmod 000 /etc/update-motd.d/10-help-text
+  * apt-get install acl apt-file bzip2 convmv gnupg grub2 hdparm hexedit inetutils-tools kbd less linux-image-generic lm-sensors locales lshw lsof lzma man mlocate nano openssh-client openssh-server p7zip-full pciutils psmisc pwgen recode rsync screen sqlite3 unzip usbutils vim xz-utils net-tools
+  * vim /etc/fstab
+  * vim /etc/crypttab
+  * vim /etc/hostname
+  * passwd
+  * grub-install
+  * update-grub
+  * update-initramfs
 
 
 ## Disable annoying Ubuntu crash reporter
-  * `apt-get --purge remove apport`
+  * apt-get --purge remove apport
 
 
 ## NetworkManager "eth0: unmanaged"
-  * `touch /etc/NetworkManager/conf.d/10-globally-managed-devices.conf`
-  * `nmcli dev set eth0 managed yes`
+  * touch /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
+  * nmcli dev set eth0 managed yes
 
 
 ## systemd-resolved "Temporary failure in name resolution"
-  * `systemd-resolve --status`
-  * `cat /run/systemd/resolve/resolv.conf`
-  * initramfs DHCP config with dhclient? `apt-get install dhcpcd5`
+  * systemd-resolve --status
+  * cat /run/systemd/resolve/resolv.conf
+  * initramfs DHCP config with dhclient? apt-get install dhcpcd5
 
 
 ## netplan
-`/etc/netplan/01-custom.yaml`
+/etc/netplan/01-custom.yaml
 
 ```
 network:
@@ -49,12 +49,12 @@ network:
             dhcp4: true
 ```
 
-Then, `netplan apply`
+Then: netplan apply
 
 
 ## Simple systemd user service
-  * `mkdir -p ~/.local/share/systemd/user`
-  * `cat >~/.local/share/systemd/user/simple.service`
+  * mkdir -p ~/.local/share/systemd/user
+  * cat >~/.local/share/systemd/user/simple.service
 
 ```
 [Unit]
@@ -75,61 +75,61 @@ WorkingDirectory=/home/joe/foo
 WantedBy=default.target
 ```
 
-  * `systemctl --user enable simple`
-  * `loginctl enable-linger joe`
+  * systemctl --user enable simple
+  * loginctl enable-linger joe
 
 ## Postgres setup
-  * `CREATE DATABASE foodb;`
-  * `CREATE USER foouser WITH ENCRYPTED PASSWORD 'foopass';`
-  * `GRANT ALL PRIVILEGES ON DATABASE foodb TO foouser;`
-  * Show tables: `\dt`
+  * CREATE DATABASE foodb;
+  * CREATE USER foouser WITH ENCRYPTED PASSWORD 'foopass';
+  * GRANT ALL PRIVILEGES ON DATABASE foodb TO foouser;
+  * Show tables: \dt
 
 ## Bugfix: Ubuntu/Thunderbird shows huge emojis in subject line
-  * `apt-get install fonts-symbola`
+  * apt-get install fonts-symbola
 
 ## mkfs.ext4 without lazy init
-  * `mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0`
+  * mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0
 
 ## kernel prerequisites for vanilla system
-  * `apt-get install build-essential flex bison libncurses5-dev libssl-dev bc libelf-dev`
+  * apt-get install build-essential flex bison libncurses5-dev libssl-dev bc libelf-dev
 
 ## GPT UEFI boot
-  * `apt-get install grub-efi-amd64 efivar`
+  * apt-get install grub-efi-amd64 efivar
   * vfat partition type EFI System (~128 MiB), mount at /boot/efi
   * ext4 partition type Linux (~1 GiB), mount at /boot
-  * `modprobe efivars`
-  * `mount -t efivarfs efivarfs /sys/firmware/efi/efivars`
-  * `grub-install --efi-directory=/boot/efi --target=x86_64-efi /dev/sdx`
+  * modprobe efivars
+  * mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+  * grub-install --efi-directory=/boot/efi --target=x86_64-efi /dev/sdx
 
 ## Using lirc/Iguanaworks USB to TX
   * TX works with stock kernel module
   * No need to install stupid Iguanaworks special software (igdaemon, etc.)
   * /etc/lirc/lirc_options.conf "driver = default" instead of "driver = devinput"
   * Place remote files in /etc/lirc/lircd.conf.d
-  * `irsend list "" ""`
-  * `irsend list fooremote ""`
-  * `irsend send_once fooremote KEY_UP`
+  * irsend list "" ""
+  * irsend list fooremote ""
+  * irsend send_once fooremote KEY_UP
 
 ## Creating Windwows10 USB boot stick
   * Partition MBR:
      - one primary marked bootable, type 0xc
      - seocnd primary type 0x7
-  * Format first partition with FAT32: `mkfs.vfat -F32 /dev/sdx1`
-  * Format second partition with NTFS: `mkfs.ntfs -Q /dev/sdx2`
-  * Loopmount ISO image to `/tmp/iso` and USB stick to `/tmp/fat` and `/tmp/ntfs`
-  * `rsync --exclude sources -r /tmp/iso/. /tmp/fat/`
-  * `mkdir /tmp/fat/sources`
-  * `cp /tmp/iso/sources/boot.wim /tmp/fat/sources`
-  * `rsync -r /tmp/iso/. /tmp/ntfs/`
-  * `umount /tmp/fat; umount /tmp/ntfs; sync`
+  * Format first partition with FAT32: mkfs.vfat -F32 /dev/sdx1
+  * Format second partition with NTFS: mkfs.ntfs -Q /dev/sdx2
+  * Loopmount ISO image to /tmp/iso and USB stick to /tmp/fat and /tmp/ntfs
+  * rsync --exclude sources -r /tmp/iso/. /tmp/fat/
+  * mkdir /tmp/fat/sources
+  * cp /tmp/iso/sources/boot.wim /tmp/fat/sources
+  * rsync -r /tmp/iso/. /tmp/ntfs/
+  * umount /tmp/fat; umount /tmp/ntfs; sync
   * Boot using UEFI
 
 ## Setting nameserver when using systemd-resolved
-`resolvectl dns eth0 8.8.8.8`
+resolvectl dns eth0 8.8.8.8
 
 ## Useful tcpdump command lines
   * Monitor all DNS requests
-    `stdbuf -o 0 tcpdump -n -i eth0 "src 192.168.1.999 and udp and port 53" >dns_list.txt 2>&1`
+    stdbuf -o 0 tcpdump -n -i eth0 "src 192.168.1.999 and udp and port 53" >dns_list.txt 2>&1
 
 ## /etc/sudoers
 ```
