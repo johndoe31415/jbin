@@ -135,3 +135,14 @@ WantedBy=default.target
 ```
 joe ALL=NOPASSWD: /usr/jbin/sbin/boot_windows
 ```
+
+## Webcam
+Device information:
+v4l2-ctl --list-formats
+v4l2-ctl --list-formats-ext
+
+Playback:
+mplayer -tv driver=v4l2:width=1280:height=720:outfmt=mjpg:device=/dev/video0 tv://
+
+Recording audio and video:
+ffmpeg -f alsa -i default -f video4linux2 -framerate 30 -video_size 1920x1080 -input_format mjpeg -i /dev/video0 audio_and_video.mkv
