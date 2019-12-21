@@ -32,7 +32,7 @@ parser.add_argument("-s", "--search", metavar = "pattern", type = str, help = "S
 parser.add_argument("-r", "--replace", metavar = "pattern", type = str, help = "Specifies the replacement pattern. Mandatory argument.")
 parser.add_argument("-y", "--replace-type", choices = [ "literal" ], default = "literal", help = "Specifies how to interpret the replacement pattern. Can be one of %(choices)s, defaults to %(default)s.")
 parser.add_argument("-l", "--flag", choices = [ "ignore", "dotall" ], action = "append", default = [ ], help = "Use specified regex flags. Can be one of %(choices)s and can be specified multiple times.")
-parser.add_argument("-t", "--template", choices = [ "copyrightyear" ], help = "Instead of specifying a search/replace pattern, setting a template sets both in a pre-defined manner. Choices are %(choices)s.")
+parser.add_argument("-t", "--template", choices = [ "copyrightyear", "py3classes" ], help = "Instead of specifying a search/replace pattern, setting a template sets both in a pre-defined manner. Choices are %(choices)s.")
 parser.add_argument("-c", "--commit", action = "store_true", help = "Do not just print potential replacements, actually write the file.")
 parser.add_argument("-n", "--no-backup", action = "store_true", help = "Do not create backup files.")
 parser.add_argument("-f", "--force", action = "store_true", help = "Overwrite backup files if they already exist.")
@@ -114,9 +114,11 @@ if have_template:
 	now = datetime.datetime.now()
 	search = {
 		"copyrightyear":	r"^(?P<linestart>#?\s+Copyright \(C\) \d+-)(?P<endyear>\d+)(?P<author>\s.*)$",
+		"py3classes":		r"^(?P<linestart>[ \t]*class )(?P<classname>[A-Z][A-Za-z0-9]*)\(object\):$",
 	}[args.template]
 	replace = {
 		"copyrightyear":	r"\g<linestart>" + now.strftime("%Y") + "\g<author>",
+		"py3classes":		r"\g<linestart>\g<classname>():"
 	}[args.template]
 	replace_type = {
 	}.get(args.template, "literal")
