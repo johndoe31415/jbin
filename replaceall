@@ -1,0 +1,142 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	replaceall: Search/replace pattern on many files using Python regexes
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import re
+import os
+import datetime
+import shutil
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Search/replace in many files on the command line.")
+parser.add_argument("-s", "--search", metavar = "pattern", type = str, help = "Specifies the search pattern, a Python regex. Mandatory argument.")
+parser.add_argument("-r", "--replace", metavar = "pattern", type = str, help = "Specifies the replacement pattern. Mandatory argument.")
+parser.add_argument("-y", "--replace-type", choices = [ "literal" ], default = "literal", help = "Specifies how to interpret the replacement pattern. Can be one of %(choices)s, defaults to %(default)s.")
+parser.add_argument("-l", "--flag", choices = [ "ignore", "dotall" ], action = "append", default = [ ], help = "Use specified regex flags. Can be one of %(choices)s and can be specified multiple times.")
+parser.add_argument("-t", "--template", choices = [ "copyrightyear" ], help = "Instead of specifying a search/replace pattern, setting a template sets both in a pre-defined manner. Choices are %(choices)s.")
+parser.add_argument("-c", "--commit", action = "store_true", help = "Do not just print potential replacements, actually write the file.")
+parser.add_argument("-n", "--no-backup", action = "store_true", help = "Do not create backup files.")
+parser.add_argument("-f", "--force", action = "store_true", help = "Overwrite backup files if they already exist.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Be more verbose")
+parser.add_argument("filename", metavar = "filename", type = str, nargs = "+", help = "Files to be searched/replaced. Can be '-' to specify reading file list from stdin.")
+args = parser.parse_args(sys.argv[1:])
+
+have_search = (args.search is not None) and (args.replace is not None)
+have_template = args.template is not None
+
+if have_search and have_template:
+	print("Must specify either template or search/replace term, not both.", file = sys.stderr)
+	sys.exit(1)
+
+if (not have_search) and (not have_template):
+	print("Must specify either template or search and replace term, you did neither.", file = sys.stderr)
+	sys.exit(1)
+
+class ReplacementException(Exception): pass
+
+class SearchReplacer():
+	def __init__(self, args, search, replace, replace_type, flags):
+		self._args = args
+		self._search = search
+		self._replace = replace
+		self._replace_type = replace_type
+		self._flags = set(flags)
+		if self._args.verbose:
+			print("Search : %s" % (search))
+			print("Replace: %s" % (replace))
+			print("Type   : %s" % (replace_type))
+			if len(self._flags) == 0:
+				print("Flags  : None")
+			else:
+				print("Flags  : %s" % (", ".join(sorted(self._flags))))
+
+		flags = re.MULTILINE
+		if "ignore" in self._flags:
+			flags |= re.IGNORECASE
+		if "dotall" in self._flags:
+			flags |= re.DOTALL
+		self._search_re = re.compile(self._search, flags = flags)
+
+	def _do_sub(self, match):
+		if self._replace_type == "literal":
+			replacement = match.expand(self._replace)
+		else:
+			raise NotImplementedError(self._replace_type)
+		if self._args.verbose or (not self._args.commit):
+			span = match.span()
+			source = match.string[span[0] : span[1]]
+			if source != replacement:
+				print("At %d: \"%s\" -> \"%s\"" % (span[0], source, replacement))
+		return replacement
+
+	def _apply_replace(self, content):
+		content = self._search_re.sub(self._do_sub, content)
+		return content
+
+	def apply(self, filename):
+		if self._args.verbose:
+			print("Processing: %s" % (filename))
+		with open(filename) as f:
+			content = f.read()
+		new_content = self._apply_replace(content)
+		if (new_content != content) and self._args.commit:
+			if not self._args.no_backup:
+				# Create a backup file
+				backup_filename = filename + ".bak"
+				if (not self._args.force) and os.path.isfile(backup_filename):
+					raise ReplacementException("Refusing to overwrite backup file %s" % (backup_filename))
+				shutil.copy(filename, backup_filename)
+
+			# Then write
+			with open(filename, "w") as f:
+				f.write(new_content)
+
+if have_template:
+	now = datetime.datetime.now()
+	search = {
+		"copyrightyear":	r"^(?P<linestart>#?\s+Copyright \(C\) \d+-)(?P<endyear>\d+)(?P<author>\s.*)$",
+	}[args.template]
+	replace = {
+		"copyrightyear":	r"\g<linestart>" + now.strftime("%Y") + "\g<author>",
+	}[args.template]
+	replace_type = {
+	}.get(args.template, "literal")
+	flags = {
+	}.get(args.template, [ ])
+else:
+	search = args.search
+	replace = args.replace
+	replace_type = args.replace_type
+	flags = args.flag
+
+replacer = SearchReplacer(args, search, replace, replace_type, flags)
+filenames = args.filename
+if filenames == [ "-" ]:
+	# Read list of filenames from stdin
+	filenames = [ ]
+	for line in sys.stdin:
+		filenames.append(line.rstrip("\r\n"))
+for filename in filenames:
+	try:
+		replacer.apply(filename)
+	except (ReplacementException, IOError) as e:
+		print("Error processing %s: %s" % (filename, str(e)))
