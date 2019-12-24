@@ -146,3 +146,17 @@ mplayer -tv driver=v4l2:width=1280:height=720:outfmt=mjpg:device=/dev/video0 tv:
 
 Recording audio and video:
 ffmpeg -f alsa -i default -f video4linux2 -framerate 30 -video_size 1920x1080 -input_format mjpeg -i /dev/video0 audio_and_video.mkv
+
+## Go
+Get a new version (not the rancid old Ubuntu version), in particular with
+module support ("go mod"). Download package and move whole go/ subdirectory to
+/usr/local/bin/golang, then create symlinks:
+
+```
+# chown -R root:root /tmp/go
+# mv /tmp/go /usr/local/bin/golang
+# ln -s /usr/local/bin/golang/bin/go /usr/local/bin/go
+# ln -s /usr/local/bin/golang/bin/gofmt /usr/local/bin/gofmt
+```
+
+To build, look for directories with "main.go" file, then "go build".
