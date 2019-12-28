@@ -71,10 +71,24 @@ if args.cachefile is not None:
 	with open(args.cachefile, "w") as f:
 		json.dump(results, f)
 
+def upper_directories(relname):
+	while True:
+		relname = os.path.dirname(relname)
+		yield relname
+		if relname == "":
+			break
+
+# Determine cumulative sizes of everything
+for (relname, dir_details) in results["data"].items():
+	dir_details["cumulative_size"] = dir_details.get("cumulative_size", 0)
+	for upper_dir in upper_directories(relname):
+		results["data"][upper_dir]["cumulative_size"] = results["data"][upper_dir].get("cumulative_size", 0) + dir_details["size"]
+
 sorted_data = list(results["data"].items())
 sorted_data.sort(key = lambda entry: (entry[1]["size"], entry[0]))
 #sorted_data.sort(key = lambda entry: (entry[0], ))
 for (relname, dir_details) in sorted_data:
 	str_size = fsfmt(dir_details["size"])
+	str_cumulative_size = fsfmt(dir_details["cumulative_size"])
 	name = results["base_dir"] + relname
-	print("%5.1f%% %10s %s" % (dir_details["size"] / results["total_size"] * 100, str_size, name))
+	print("%5.1f%% %5.1f%% %10s %10s %s" % (dir_details["size"] / results["total_size"] * 100, dir_details["cumulative_size"] / results["total_size"] * 100, str_size, str_cumulative_size, name))
