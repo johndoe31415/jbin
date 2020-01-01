@@ -8,7 +8,7 @@ passwd the first time around). It's probably not very useful for anyone else.
 
 
 ## debootstrap checklist
-  * During fdisk, do not forget /boot partition
+  * During fdisk, do not forget: BIOS boot (for GPT), /boot partition (for crypto-root)
   * debootstrap disco subdir http://ftp.halifax.rwth-aachen.de/ubuntu/
   * debootstrap buster subdir http://ftp.de.debian.org/debian/
   * chmod 000 /etc/update-motd.d/10-help-text
