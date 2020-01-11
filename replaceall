@@ -115,7 +115,7 @@ class SearchReplacer():
 		if os.path.isdir(filename) and self._args.recurse:
 			return self._apply_directory(filename)
 
-		if self._args.verbose:
+		if self._args.verbose >= 2:
 			print("Processing: %s" % (filename))
 		self._current_filename = filename
 		with open(filename) as f:
