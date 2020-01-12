@@ -182,13 +182,19 @@ colorscheme zellner
 set background=light
 set guifont=Latin\ Modern\ Mono\ 12
 
+" Previous and next on F11 and F12 (e.g., when using linter)
 imap <F11> <Esc>:cp<Enter>zz:cc<Enter>
 map <F11> :cp<Enter>zz:cc<Enter>
 imap <F12> <Esc>:cn<Enter>zz:cc<Enter>
 map <F12> :cn<Enter>zz:cc<Enter>
 
+" Update copyright year when writing Python code
+autocmd FileType python autocmd BufWritePre <buffer> :%s/^#\s\+Copyright (C) \d\+-\zs\d\+\ze Johannes Bauer$/\=strftime("%Y")/e|''
+
+" Remove tailing spaces for a number of file types
 autocmd FileType python autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType javascript autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType c autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType cpp autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType html autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType json autocmd BufWritePre <buffer> :%s/\s\+$//e
