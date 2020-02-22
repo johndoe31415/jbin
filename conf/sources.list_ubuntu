@@ -5,8 +5,8 @@
 # 19.10 eoan
 # 20.04 focal
 
-# hostname prefix
-# 	old 		old-releases
+# hostnames
+# 	old 		old-releases.ubuntu.com
 # 	current		ftp.halifax.rwth-aachen.de
 
 deb http://ftp.halifax.rwth-aachen.de/ubuntu/ eoan main restricted
