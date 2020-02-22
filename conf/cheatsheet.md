@@ -12,11 +12,13 @@ passwd the first time around). It's probably not very useful for anyone else.
   * debootstrap eoan subdir http://ftp.halifax.rwth-aachen.de/ubuntu/
   * debootstrap buster subdir http://ftp.de.debian.org/debian/
   * chmod 000 /etc/update-motd.d/10-help-text
-  * apt-get install acl apt-file bzip2 convmv gnupg grub2 hdparm hexedit inetutils-tools kbd less linux-image-generic lm-sensors locales lshw lsof lzma man mlocate nano openssh-client openssh-server p7zip-full pciutils psmisc pwgen recode rsync screen sqlite3 unzip usbutils vim xz-utils net-tools
+  * apt-get update && apt-get install acl apt-file bzip2 convmv cryptsetup gnupg git grub2 hdparm hexedit inetutils-tools kbd less linux-image-generic lm-sensors locales lshw lsof lzma man mlocate nano openssh-client openssh-server p7zip-full pciutils psmisc python3 pwgen recode rsync screen sqlite3 unzip usbutils vim xz-utils net-tools
+  * cd /usr; git clone https://github.com/johndoe31415/jbin
+  * apt-get install ubuntu-mate-desktop
   * vim /etc/fstab
   * vim /etc/crypttab
   * vim /etc/hostname
-  * passwd
+  * adduser / passwd
   * grub-install
   * update-grub
   * update-initramfs
