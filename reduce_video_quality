@@ -55,6 +55,7 @@ def fmt_secs(total_seconds):
 	return "%d:%02d:%02d" % (hrs, mins, secs)
 
 parser = FriendlyArgumentParser(description = "Transcode video and reduce its quality/size")
+parser.add_argument("-w", "--whatsapp", action = "store_true", help = "Choose older codecs to create videos that can be played by WhatsApp.")
 parser.add_argument("-s", "--size", metavar = "geometry", type = scale_geometry, default = "1920x1080", help = "Output geometry that video should be scaled to. Defaults to %(default)s. Can also be a single value that is typically recognized, such as 480, 720, 1080 or uhd.")
 parser.add_argument("--start", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to start rendering. Can be of format ss or mm:ss or hh:mm:ss.")
 parser.add_argument("--end", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to end rendering. Can be of format ss or mm:ss or hh:mm:ss.")
@@ -73,7 +74,12 @@ if (args.end is not None):
 		duration = args.end - args.start
 	cmd += [ "-t", fmt_secs(duration) ]
 cmd += [ "-vf", "scale=%d:%d" % (args.size[0], args.size[1]) ]
-cmd += [ "-c:v", "libx265", "-crf", "28" ]
+if not args.whatsapp:
+	# Modern codecs
+	cmd += [ "-c:v", "libx265", "-crf", "28" ]
+else:
+	# Old garbage
+	cmd += [ "-c:v", "libx264", "-profile:v", "baseline", "-level", "3.0", "-pix_fmt", "yuv420p" ]
 cmd += [ "-c:a", "aac", "-b:a", "128k" ]
 cmd += [ args.outfile ]
 
