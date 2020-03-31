@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	replaceall: Search/replace pattern on many files using Python regexes
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -118,20 +118,24 @@ class SearchReplacer():
 		if self._args.verbose >= 2:
 			print("Processing: %s" % (filename))
 		self._current_filename = filename
-		with open(filename) as f:
-			content = f.read()
-		new_content = self._apply_replace(content)
-		if (new_content != content) and self._args.commit:
-			if not self._args.no_backup:
-				# Create a backup file
-				backup_filename = filename + ".bak"
-				if (not self._args.force) and os.path.isfile(backup_filename):
-					raise ReplacementException("Refusing to overwrite backup file %s" % (backup_filename))
-				shutil.copy(filename, backup_filename)
 
-			# Then write
-			with open(filename, "w") as f:
-				f.write(new_content)
+		try:
+			with open(filename) as f:
+				content = f.read()
+			new_content = self._apply_replace(content)
+			if (new_content != content) and self._args.commit:
+				if not self._args.no_backup:
+					# Create a backup file
+					backup_filename = filename + ".bak"
+					if (not self._args.force) and os.path.isfile(backup_filename):
+						raise ReplacementException("Refusing to overwrite backup file %s" % (backup_filename))
+					shutil.copy(filename, backup_filename)
+
+				# Then write
+				with open(filename, "w") as f:
+					f.write(new_content)
+		except (ReplacementException, UnicodeDecodeError, IOError) as e:
+			print("Error processing %s: %s" % (filename, str(e)))
 
 if have_template:
 	now = datetime.datetime.now()
@@ -161,7 +165,4 @@ if filenames == [ "-" ]:
 	for line in sys.stdin:
 		filenames.append(line.rstrip("\r\n"))
 for filename in filenames:
-	try:
-		replacer.apply(filename)
-	except (ReplacementException, UnicodeDecodeError, IOError) as e:
-		print("Error processing %s: %s" % (filename, str(e)))
+	replacer.apply(filename)
