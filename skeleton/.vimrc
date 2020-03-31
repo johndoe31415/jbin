@@ -189,7 +189,7 @@ imap <F12> <Esc>:cn<Enter>zz:cc<Enter>
 map <F12> :cn<Enter>zz:cc<Enter>
 
 " Update copyright year when writing Python code
-autocmd FileType python autocmd BufWritePre <buffer> :%s/^#\s\+Copyright (C) \d\+-\zs\d\+\ze Johannes Bauer$/\=strftime("%Y")/e|''
+autocmd FileType python autocmd BufWritePre <buffer> let pos = winsaveview() | :%s/^#\s\+Copyright (C) \d\+-\zs\d\+\ze Johannes Bauer$/\=strftime("%Y")/e | call winrestview(pos) |unlet! pos
 
 " Remove tailing spaces for a number of file types
 autocmd FileType python autocmd BufWritePre <buffer> :%s/\s\+$//e
@@ -198,3 +198,4 @@ autocmd FileType c autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType cpp autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType html autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType json autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType xml autocmd BufWritePre <buffer> :%s/\s\+$//e
