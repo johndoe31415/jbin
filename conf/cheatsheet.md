@@ -166,3 +166,7 @@ To build, look for directories with "main.go" file, then "go build".
 ## LVM2
 PV -> VG -> LV
 Grow LV: lvresize -L +50G /dev/vg0/test-disk
+
+## Python PyPi
+python3 setup.py sdist
+twine upload dist/foobar-1.2.3.tar.gz
