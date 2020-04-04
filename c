@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	c: General-purpose scientific/cryptographic calculator
-#	Copyright (C) 2009-2018 Johannes Bauer
+#	Copyright (C) 2009-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -243,7 +243,7 @@ def pick_arb_flt(floatvalue, exponentbits, mantissabits) -> FncDescription(categ
 	integral = int(floatvalue)
 	fraction = floatvalue - integral
 
-	if integral <= 1:
+	if 0 < integral <= 1:
 		exponent = 0
 		binint = ""
 		if integral == 0:
@@ -252,6 +252,8 @@ def pick_arb_flt(floatvalue, exponentbits, mantissabits) -> FncDescription(categ
 				exponent -= 1
 			fraction -= 1
 	else:
+		# WAT
+		print(integral)
 		binint = bin(integral)[3:]
 		exponent = len(binint)
 	binfrc = flttobin(fraction, mantissabits)
@@ -1621,8 +1623,8 @@ def __evaluate(query):
 if sys.stdin.isatty():
 	__evaluate(query)
 else:
-	for line in sys.stdin:
-		line = line[:-1]
+	for (lineno, line) in enumerate(sys.stdin):
+		line = line.rstrip(" \t\r\n")
 		try:
 			__evaluate(query)
 		except Exception as e:
