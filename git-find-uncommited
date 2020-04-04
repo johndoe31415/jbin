@@ -31,13 +31,20 @@ else:
 
 for (basedir, subdirs, files) in os.walk(path):
 	if ".git" in subdirs:
+		current_dir = os.getcwd()
 		git_repository_directory = os.path.realpath(basedir)
 		os.chdir(git_repository_directory)
+		local_repo = (subprocess.run([ "git", "show-ref", "--quiet", "origin/master" ]).returncode) != 0
 		is_dirty = (subprocess.run([ "git", "diff", "--quiet" ]).returncode) != 0
 		index_dirty = (subprocess.run([ "git", "diff-index", "--quiet", "--cached", "HEAD", "--" ]).returncode) != 0
-		is_unpushed = (subprocess.run([ "git", "diff", "--quiet", "origin/master..HEAD" ]).returncode) != 0
-		if is_dirty or index_dirty or is_unpushed:
+		if not local_repo:
+			is_unpushed = (subprocess.run([ "git", "diff", "--quiet", "origin/master..HEAD" ]).returncode) != 0
+		else:
+			is_unpushed = False
+		if local_repo or is_dirty or index_dirty or is_unpushed:
 			status = [ ]
+			if local_repo:
+				status += [ "local" ]
 			if is_dirty:
 				status += [ "dirty" ]
 			if index_dirty:
@@ -45,3 +52,4 @@ for (basedir, subdirs, files) in os.walk(path):
 			if is_unpushed:
 				status += [ "unpushed" ]
 			print("%s   %s" % (git_repository_directory, ", ".join(status)))
+		os.chdir(current_dir)
