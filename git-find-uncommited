@@ -23,13 +23,15 @@
 import os
 import sys
 import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
 
-if len(sys.argv) == 1:
-	path = "."
-else:
-	path = sys.argv[1]
+parser = FriendlyArgumentParser(description = "Find git repositories that are ")
+parser.add_argument("-l", "--show-local", action = "store_true", help = "Also show local repositories")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("base_dir", metavar = "base_dir", type = str, nargs = "?", help = "Starting directory to search for; if omitted, current working directory is used")
+args = parser.parse_args(sys.argv[1:])
 
-for (basedir, subdirs, files) in os.walk(path):
+for (basedir, subdirs, files) in os.walk(args.base_dir or "."):
 	if ".git" in subdirs:
 		current_dir = os.getcwd()
 		git_repository_directory = os.path.realpath(basedir)
@@ -43,17 +45,19 @@ for (basedir, subdirs, files) in os.walk(path):
 				is_unpushed = (subprocess.run([ "git", "diff", "--quiet", "origin/master..HEAD" ], stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL).returncode) != 0
 			else:
 				is_unpushed = False
-			if local_repo or is_dirty or index_dirty or is_unpushed:
-				status = [ ]
-				if local_repo:
-					status += [ "local" ]
-				if is_dirty:
-					status += [ "dirty" ]
-				if index_dirty:
-					status += [ "indexed" ]
-				if is_unpushed:
-					status += [ "unpushed" ]
-				print("%s   %s" % (git_repository_directory, ", ".join(status)))
+			if (not local_repo) or args.show_local:
+				if local_repo or is_dirty or index_dirty or is_unpushed:
+					status = [ ]
+					if local_repo:
+						status += [ "local" ]
+					if is_dirty:
+						status += [ "dirty" ]
+					if index_dirty:
+						status += [ "indexed" ]
+					if is_unpushed:
+						status += [ "unpushed" ]
+					print("%s   %s" % (git_repository_directory, ", ".join(status)))
 		else:
-			print("%s cannot open" % (git_repository_directory))
+			if args.verbose >= 1:
+				print("%s error" % (git_repository_directory))
 		os.chdir(current_dir)
