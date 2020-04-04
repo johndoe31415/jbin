@@ -1,0 +1,47 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	git-find-uncommitted: Recursively find git repositories that are uncommited or unpushed
+#	Copyright (C) 2020-2020 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import subprocess
+
+if len(sys.argv) == 1:
+	path = "."
+else:
+	path = sys.argv[1]
+
+for (basedir, subdirs, files) in os.walk(path):
+	if ".git" in subdirs:
+		git_repository_directory = os.path.realpath(basedir)
+		os.chdir(git_repository_directory)
+		is_dirty = (subprocess.run([ "git", "diff", "--quiet" ]).returncode) != 0
+		index_dirty = (subprocess.run([ "git", "diff-index", "--quiet", "--cached", "HEAD", "--" ]).returncode) != 0
+		is_unpushed = (subprocess.run([ "git", "diff", "--quiet", "origin/master..HEAD" ]).returncode) != 0
+		if is_dirty or index_dirty or is_unpushed:
+			status = [ ]
+			if is_dirty:
+				status += [ "dirty" ]
+			if index_dirty:
+				status += [ "indexed" ]
+			if is_unpushed:
+				status += [ "unpushed" ]
+			print("%s   %s" % (git_repository_directory, ", ".join(status)))
