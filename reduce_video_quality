@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	reduce_video_quality: Rescale video to smaller version
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -59,6 +59,8 @@ parser.add_argument("-w", "--whatsapp", action = "store_true", help = "Choose ol
 parser.add_argument("-s", "--size", metavar = "geometry", type = scale_geometry, default = "1920x1080", help = "Output geometry that video should be scaled to. Defaults to %(default)s. Can also be a single value that is typically recognized, such as 480, 720, 1080 or uhd.")
 parser.add_argument("--start", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to start rendering. Can be of format ss or mm:ss or hh:mm:ss.")
 parser.add_argument("--end", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to end rendering. Can be of format ss or mm:ss or hh:mm:ss.")
+parser.add_argument("-r", "--no-auto-rotate", action = "store_true", help = "Do not auto-interpret the side data; in other words, disable smart rotation. This is needed for some broken video players (like on smart phones) that would show, e.g., a vertical video horiziontally with huge black bars on the side.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Show more verboity before conversion process.")
 parser.add_argument("infile", metavar = "in_filename", type = str, help = "Input video file.")
 parser.add_argument("outfile", metavar = "out_filename", type = str, help = "Reduced quality output video file.")
 args = parser.parse_args(sys.argv[1:])
@@ -66,6 +68,8 @@ args = parser.parse_args(sys.argv[1:])
 cmd = [ "ffmpeg" ]
 if args.start is not None:
 	cmd += [ "-ss", fmt_secs(args.start) ]
+if args.no_auto_rotate:
+	cmd += [ "-noautorotate" ]
 cmd += [ "-i", args.infile ]
 if (args.end is not None):
 	if args.start is None:
@@ -73,7 +77,11 @@ if (args.end is not None):
 	else:
 		duration = args.end - args.start
 	cmd += [ "-t", fmt_secs(duration) ]
-cmd += [ "-vf", "scale=%d:%d" % (args.size[0], args.size[1]) ]
+#cmd += [ "-vf", "scale=w=%d:h=%d:force_original_aspect_ratio=decrease" % (args.size[0], args.size[1]) ]
+#cmd += [ "-map_metadata", "0" ]
+#cmd += [ "-map_metadata", "0", "-movflags", "use_metadata_tags" ]
+#cmd += [ "-map_metadata", "-1" ]
+cmd += [ "-vf", "scale=w=%d:h=%d" % (args.size[0], args.size[1]) ]
 if not args.whatsapp:
 	# Modern codecs
 	cmd += [ "-c:v", "libx265", "-crf", "28" ]
@@ -82,5 +90,6 @@ else:
 	cmd += [ "-c:v", "libx264", "-profile:v", "baseline", "-level", "3.0", "-pix_fmt", "yuv420p" ]
 cmd += [ "-c:a", "aac", "-b:a", "128k" ]
 cmd += [ args.outfile ]
-
+if args.verbose:
+	print(" ".join(cmd))
 subprocess.check_call(cmd)
