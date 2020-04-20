@@ -1,0 +1,86 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	reduce_media_quality: Convert a complete directory and resize all contained videos/images
+#	Copyright (C) 2020-2020 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import subprocess
+import shutil
+import contextlib
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Convert a whole directory which contains both images and video.")
+parser.add_argument("-f", "--force", action = "store_true", help = "Overwrite output files if they already exist.")
+parser.add_argument("-q", "--quality", choices = [ "standard", "high" ], default = "standard", help = "Quality level; impacts both video and image rescaling. Defaults to %(default)s, choices are %(choices)s.")
+parser.add_argument("inpath", metavar = "dirname", type = str, help = "Input directory to convert.")
+parser.add_argument("outpath", metavar = "dirname", type = str, help = "Output directory to convert.")
+args = parser.parse_args(sys.argv[1:])
+
+in_path = args.inpath
+if not in_path.endswith("/"):
+	in_path += "/"
+out_path = args.outpath
+if not out_path.endswith("/"):
+	out_path += "/"
+
+with contextlib.suppress(FileExistsError):
+	os.makedirs(out_path)
+
+quality = {
+	"standard": {
+		"video_opts": [ "-r", "-s", "720" ],
+		"image_opts": [ "--keep-meta" ],
+	},
+	"high": {
+		"video_opts": [ "-r", "-s", "1080" ],
+		"image_opts": [ "--keep-meta" ],
+	},
+}[args.quality]
+video_exts = set([ ".mp4", ".mov" ])
+image_exts = set([ ".jpg" ])
+for filename in sorted(os.listdir(in_path)):
+	full_infile = in_path + filename
+	(base, ext) = os.path.splitext(filename)
+	lext = ext.lower()
+
+	if lext in video_exts:
+		print("Video: %s" % (filename))
+		output_filename = base + ".mkv"
+	elif lext in image_exts:
+		print("Image: %s" % (filename))
+		output_filename = base + ".jpg"
+	else:
+		continue
+
+	full_outfile = out_path + output_filename
+	if os.path.exists(full_outfile):
+		if not args.force:
+			continue
+		else:
+			os.unlink(full_outfile)
+
+	if lext in video_exts:
+		# Convert video
+		subprocess.check_call([ "reduce_video_quality" ] + quality["video_opts"] + [ full_infile, full_outfile ])
+	elif lext in image_exts:
+		# Copy image and reduce
+		shutil.copy(full_infile, full_outfile)
+		subprocess.check_call([ "reduce_img_quality" ] + quality["image_opts"] + [ full_outfile ])
