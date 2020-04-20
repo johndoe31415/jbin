@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	reduce_image_quality: Rescale images to smaller versions and strip EXIF data
-#	Copyright (C) 2018-2018 Johannes Bauer
+#	Copyright (C) 2018-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -30,7 +30,7 @@ import tempfile
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--outtype", choices = [ "jpg", "png" ], default = "jpg", help = "Output file type to use. Defaults to %(default)s, can be any of %(choices)s.")
 parser.add_argument("-q", "--quality", metavar = "quality", type = int, default = 85, help = "For lossy compression, gives the quality factor in percent. Defaults to %(default)d%%, is ignored for lossless output formats.")
-parser.add_argument("-s", "--size", metavar = "geometry", type = str, default = "1920x1080", help = "Output geometry that files should get at maximum. Defaults to %(default)s.")
+parser.add_argument("-s", "--size", metavar = "geometry", type = str, default = "2073600@", help = "Output geometry that files should get at maximum. Can be a resolution, like 1920x1080 or a pixel count with a trailing '@' character like 2073600@. Defaults to %(default)s.")
 parser.add_argument("--keep-meta", action = "store_true", help = "Do not strip metadata from files.")
 parser.add_argument("--backup", action = "store_true", help = "Create a backup of the original files.")
 parser.add_argument("infiles", metavar = "filename", type = str, nargs = "+", help = "Input file(s) to convert.")
@@ -51,7 +51,7 @@ for infilename in args.infiles:
 
 	with tempfile.NamedTemporaryFile(prefix = "imgconvert_", suffix = "." + args.outtype) as tmpfile:
 		tmpfile.close()
-		cmd = [ "convert", "-auto-orient", "-quality", str(args.quality), "-resize", args.size ]
+		cmd = [ "convert", "-auto-orient", "-quality", str(args.quality), "-resize", ">" + args.size ]
 		if not args.keep_meta:
 			cmd += [ "-strip" ]
 		cmd += [ infilename, tmpfile.name ]
