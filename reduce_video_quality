@@ -22,6 +22,7 @@
 
 import sys
 import subprocess
+import argparse
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 def scale_geometry(text):
@@ -30,7 +31,7 @@ def scale_geometry(text):
 		"360":		(480, 360),
 		"480":		(858, 480),
 		"720":		(1280, 720),
-		"1920":		(1920, 1080),
+		"1080":		(1920, 1080),
 		"hd":		(1920, 1080),
 		"2160":		(3860, 2160),
 		"uhd":		(3860, 2160),
@@ -38,6 +39,8 @@ def scale_geometry(text):
 	if text.lower() in single_values:
 		return single_values[text.lower()]
 	value = [ int(x) for x in text.split("x", maxsplit = 1) ]
+	if len(value) != 2:
+		raise argparse.ArgumentTypeError("invalid geometry specification '%s'" % (text))
 	return value
 
 def timestamp(text):
