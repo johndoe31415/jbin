@@ -1,0 +1,71 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	dtmfdial: Play DTMF tones
+#	Copyright (C) 2020-2020 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import time
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Playback DTMF dial tones.")
+parser.add_argument("-l", "--length", metavar = "secs", type = float, default = 0.3, help = "Length of each tone in seconds. Defaults to %(default).2f secs.")
+parser.add_argument("-p", "--pause", metavar = "secs", type = float, default = 0.15, help = "Length of each tone in seconds. Defaults to %(default).2f secs.")
+parser.add_argument("dtmf_str", metavar = "dtmf_str", type = str, help = "DTMF string to play back or \"-\" to query stdin.")
+args = parser.parse_args(sys.argv[1:])
+
+
+chars = {
+	"1":	(697, 1209),
+	"2":	(697, 1336),
+	"3":	(697, 1477),
+	"a":	(697, 1633),
+	"4":	(770, 1209),
+	"5":	(770, 1336),
+	"6":	(770, 1477),
+	"b":	(770, 1633),
+	"7":	(852, 1209),
+	"8":	(852, 1336),
+	"9":	(852, 1477),
+	"c":	(852, 1633),
+	"*":	(941, 1209),
+	"0":	(941, 1336),
+	"#":	(941, 1477),
+	"d":	(941, 1633),
+}
+
+def playback(dtmf_str):
+	for char in dtmf_str:
+		frequencies = chars.get(char.lower())
+		if frequencies is None:
+			print("Unknown char '%s'. Ignored." % (char))
+			continue
+		(f1, f2) = frequencies
+		print(f1, f2)
+		cmd = [ "play", "-n", "synth", str(args.length), "sin", str(f1), "sin", str(f2), "remix", "-" ]
+		subprocess.call(cmd)
+		time.sleep(args.pause)
+
+if args.dtmf_str != "-":
+	playback(args.dtmf_str)
+else:
+	while True:
+		dtmf_str = input("Characters: ")
+		playback(dtmf_str)
