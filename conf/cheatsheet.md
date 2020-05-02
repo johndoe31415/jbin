@@ -170,3 +170,6 @@ Grow LV: lvresize -L +50G /dev/vg0/test-disk
 ## Python PyPi
 python3 setup.py sdist
 twine upload dist/foobar-1.2.3.tar.gz
+
+## Mounting CIFS/Samba share
+mount.cifs -o user=guest,pass=guest,uid=1000,gid=1000,dir_mode=0755,file_mode=0644 //sz/Users dos
