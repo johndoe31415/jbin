@@ -29,16 +29,17 @@ definitions = [
 	{
 		"name": "Ubuntu",
 		"releases": [
-			("artful", "x"),
-			("bionic", "x"),
-			("cosmic", "x"),
-			("disco", "x"),
-			("eoan", "x"),
-			("focal", "x"),
+			("artful", "2017.10"),
+			("bionic", "2018.04"),
+			("cosmic", "2018.10"),
+			("disco", "2019.04"),
+			("eoan", "2019.10"),
+			("focal", "2020.04"),
 		],
 		"mirrors": [
-			"http://old-releases.ubuntu.com/ubuntu/",
 			"http://ftp.halifax.rwth-aachen.de/ubuntu/",
+			"http://ubuntu.mirror.lrz.de/ubuntu/",
+			"http://old-releases.ubuntu.com/ubuntu/",
 		],
 		"template": """
 			deb ${mirror} ${release} main restricted
