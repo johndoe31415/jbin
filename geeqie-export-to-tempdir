@@ -25,6 +25,7 @@ import sys
 import subprocess
 import contextlib
 import datetime
+import tempfile
 
 desktop_entry = """\
 [Desktop Entry]
@@ -57,7 +58,22 @@ destination_file = "/tmp/geeqie_export_" + now.strftime("%Y_%m_%d_%H_%M_%S") + "
 if os.path.isfile(destination_file):
 	raise Exception("Destination file already exists: %s" % (destination_file))
 
-command = [ "convert" ]
-command += [ "-auto-orient", "-quality", "80", "-resize", ">2073600@", "-strip" ]
-command += [ source_file, destination_file ]
-subprocess.check_call(command)
+(source_base, source_ext) = os.path.splitext(source_file)
+source_ext = source_ext.lower()
+
+def do_convert(source_file, destination_file):
+	command = [ "convert" ]
+	command += [ "-auto-orient", "-quality", "80", "-resize", ">2073600@", "-strip" ]
+	command += [ source_file, destination_file ]
+	subprocess.check_call(command)
+
+if source_ext == ".nef":
+	# Extract NEF thumbnail and post-process that
+	command = [ "dcraw", "-e", "-c", source_file ]
+	thumbnail_jpg_data = subprocess.check_output(command)
+	with tempfile.NamedTemporaryFile(prefix = "dcraw_", suffix = ".jpg") as f:
+		f.write(thumbnail_jpg_data)
+		f.flush()
+		do_convert(f.name, destination_file)
+else:
+	do_convert(source_file, destination_file)
