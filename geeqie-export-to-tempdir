@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	geeqie-export-to-tempdir: Geeqie plugin to reduce image quality and store in /tmp
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -58,6 +58,6 @@ if os.path.isfile(destination_file):
 	raise Exception("Destination file already exists: %s" % (destination_file))
 
 command = [ "convert" ]
-command += [ "-auto-orient", "-quality", "80", "-resize", "1920x1080", "-strip" ]
+command += [ "-auto-orient", "-quality", "80", "-resize", ">2073600@", "-strip" ]
 command += [ source_file, destination_file ]
 subprocess.check_call(command)
