@@ -1,0 +1,102 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	mailsend: Send emails via command line
+#	Copyright (C) 2020-2020 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import smtplib
+import urllib.parse
+import email.utils
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Send emails via the command line with a friendlier interface than sendmail.")
+parser.add_argument("-t", "--to-mail", metavar = "email", type = str, action = "append", required = True, default = [ ], help = "Specifies recipient of email. Must be specified at least once.")
+parser.add_argument("-f", "--from-mail", metavar = "email", type = str, required = True, help = "Specifies sender of email. Mandatory argument.")
+parser.add_argument("-s", "--subject", metavar = "text", type = str, default = "Email with no subject", help = "Specifies subject of email. Defaults to %(default)s.")
+parser.add_argument("-c", "--cc", metavar = "email", type = str, default = [ ], action = "append", help = "Specifies CC recipients.")
+parser.add_argument("-b", "--bcc", metavar = "email", type = str, default = [ ], action = "append", help = "Specifies BCC recipients.")
+parser.add_argument("-i", "--input", metavar = "filename", type = str, help = "Read body of email from this file. Otherwise, reads from stdin.")
+parser.add_argument("-u", "--server-uri", metavar = "uri", type = urllib.parse.urlparse, default = "smtp://127.0.0.1:25", help = "URI of mail server to use. Defaults to %(default)s.")
+parser.add_argument("--starttls", action = "store_true", help = "Use STARTTLS with SMTP connection to create a secure connection.")
+parser.add_argument("--user", metavar = "username", type = str, help = "Username to authenticate with.")
+parser.add_argument("--passwd", metavar = "password", type = str, help = "Password to authenticate with.")
+parser.add_argument("--no-send", action = "store_true", help = "Login to mail server, but do not actually send an email.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+args = parser.parse_args(sys.argv[1:])
+
+hostname = args.server_uri.netloc.split(":", maxsplit = 1)
+if len(hostname) == 2:
+	(hostname, port) = (hostname[0], int(hostname[1]))
+else:
+	hostname = hostname[0]
+	port = 25 if (args.server_uri.scheme == "smtp") else 465
+
+if args.input is None:
+	body = sys.stdin.read()
+else:
+	with open(args.input) as f:
+		body = f.read()
+
+if args.verbose >= 1:
+	print("Connecting to %s:%d..." % (hostname, port))
+if args.server_uri.scheme.lower() == "smtp":
+	conn = smtplib.SMTP(hostname, port)
+elif args.server_uri.scheme.lower() == "smtps":
+	conn = smtplib.SMTP_SSL(hostname, port)
+	if args.starttls:
+		print("STARTTLS is only supported when using SMTP.", file = sys.stderr)
+		sys.exit(1)
+else:
+	print("Unknown URI scheme: %s" % (args.server_uri.scheme), file = sys.stderr)
+	sys.exit(1)
+
+message = MIMEText(body)
+message["From"] = args.from_mail
+message["To"] = ", ".join(args.to_mail)
+message["Subject"] = args.subject
+if len(args.bcc) > 0:
+	message["BCC"] = ", ".join(args.args.bcc)
+if len(args.cc) > 0:
+	message["CC"] = ", ".join(args.args.bcc)
+message["Date"] = email.utils.formatdate(localtime = True)
+message["MIME-Version"] = "1.0"
+message["X-Mailer"] = "https://github.com/johndoe31415/jbin mailsend"
+message = message.as_string()
+if args.verbose >= 1:
+	print(message)
+	print()
+
+with conn as server:
+	if args.verbose >= 2:
+		print("Connected to %s:%d." % (hostname, port))
+	if args.starttls:
+		if args.verbose >= 2:
+			print("Issuing STARTTLS...")
+		server.starttls()
+	if args.user and args.passwd:
+		if args.verbose >= 2:
+			print("Logging in with user %s..." % (args.user))
+		server.login(args.user, args.passwd)
+
+	if not args.no_send:
+		server.sendmail(args.from_mail, args.to_mail[0], message)
+
