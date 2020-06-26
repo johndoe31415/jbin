@@ -86,6 +86,18 @@ WantedBy=default.target
   * GRANT ALL PRIVILEGES ON DATABASE foodb TO foouser;
   * Show tables: \dt
 
+Grant user read-only privileges
+  * \c foodb
+  * GRANT CONNECT ON DATABASE foodb TO foouser;
+  * GRANT SELECT ON ALL TABLES IN SCHEMA public TO foouser;
+
+Delete user
+  * DROP OWNED BY foouser;
+  * DROP USER foouser;
+
+Change password
+  * ALTER USER foouser WITH ENCRYPTED PASSWORD 'foopass';
+
 ## Bugfix: Ubuntu/Thunderbird shows huge emojis in subject line
   * apt-get install fonts-symbola
 
@@ -125,6 +137,9 @@ WantedBy=default.target
   * rsync -r /tmp/iso/. /tmp/ntfs/
   * umount /tmp/fat; umount /tmp/ntfs; sync
   * Boot using UEFI
+
+## Complete rsync backup
+rsync -aHAX --numeric-ids --exclude /proc --exclude /sys --exclude /tmp --exclude /dev --exclude /var/cache/apt root@server.com:/ backup
 
 ## Setting nameserver when using systemd-resolved
 resolvectl dns eth0 8.8.8.8
