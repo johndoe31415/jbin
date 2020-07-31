@@ -188,3 +188,8 @@ twine upload dist/foobar-1.2.3.tar.gz
 
 ## Mounting CIFS/Samba share
 mount.cifs -o user=guest,pass=guest,uid=1000,gid=1000,dir_mode=0755,file_mode=0644 //sz/Users dos
+
+## SMTP/MTA configuration check
+  * Test email to check-auth@verifier.port25.com
+  * [https://dkimvalidator.com/](https://dkimvalidator.com/)
+  * Test email to Google
