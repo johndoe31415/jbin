@@ -1,0 +1,44 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	wipe_mbr_gpt: Wipes the GPT and MBR of a block device
+#	Copyright (C) 2020-2020 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+
+if len(sys.argv) != 2:
+	print("%s [block device]" % (sys.argv[0]))
+	sys.exit(1)
+
+block_dev = sys.argv[1]
+with open(block_dev, "rb") as f:
+	f.seek(0, os.SEEK_END)
+	disk_size = f.tell()
+
+print("Disk size of %s: %d bytes = %.3f TB" % (block_dev, disk_size, disk_size / 1e12))
+yn = input("ALL DATA WILL BE LOST! To continue, type 'YES': ")
+if yn != "YES":
+	print("Aborted")
+	sys.exit(1)
+
+with open(block_dev, "wb") as f:
+	f.write(bytes(1024 * 1024))
+	f.seek(-1024 * 1024, os.SEEK_END)
+	f.write(bytes(1024 * 1024))
