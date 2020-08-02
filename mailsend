@@ -29,8 +29,8 @@ from email.mime.text import MIMEText
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 parser = FriendlyArgumentParser(description = "Send emails via the command line with a friendlier interface than sendmail.")
-parser.add_argument("-t", "--to-mail", metavar = "email", type = str, action = "append", required = True, default = [ ], help = "Specifies recipient of email. Must be specified at least once.")
 parser.add_argument("-f", "--from-mail", metavar = "email", type = str, required = True, help = "Specifies sender of email. Mandatory argument.")
+parser.add_argument("-t", "--to-mail", metavar = "email", type = str, action = "append", required = True, default = [ ], help = "Specifies recipient of email. Must be specified at least once.")
 parser.add_argument("-s", "--subject", metavar = "text", type = str, default = "Email with no subject", help = "Specifies subject of email. Defaults to %(default)s.")
 parser.add_argument("-c", "--cc", metavar = "email", type = str, default = [ ], action = "append", help = "Specifies CC recipients.")
 parser.add_argument("-b", "--bcc", metavar = "email", type = str, default = [ ], action = "append", help = "Specifies BCC recipients.")
@@ -48,8 +48,11 @@ if len(hostname) == 2:
 	(hostname, port) = (hostname[0], int(hostname[1]))
 else:
 	hostname = hostname[0]
-	port = 25 if (args.server_uri.scheme == "smtp") else 465
-
+	port = {
+		"smtp":			25,
+		"smtps":		465,
+		"submission":	587,
+	}[args.server_uri.scheme]
 if args.input is None:
 	body = sys.stdin.read()
 else:
