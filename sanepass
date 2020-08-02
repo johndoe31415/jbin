@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	sanepass: Create fixed-entropy passwords with a nice alphabet
-#	Copyright (C) 2018-2018 Johannes Bauer
+#	Copyright (C) 2018-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -35,6 +35,7 @@ filtered_alphabet = set("".join([
 	"2Z",
 	"6G",
 ]))
+filtered_us_alphabet = set("zZyY")
 source_alphabet = {
 	"all":		string.ascii_uppercase + string.ascii_lowercase + string.digits,
 	"chars":	string.ascii_uppercase + string.ascii_lowercase,
@@ -42,6 +43,7 @@ source_alphabet = {
 }
 
 parser = FriendlyArgumentParser()
+parser.add_argument("-u", "--filter-us-keyboard", action = "store_true", help = "Filter characters that are on different places on a QWERTZ vs. QWERTY keyboard.")
 parser.add_argument("-n", "--no-filter-ambiguous", action = "store_true", help = "Do not filter characters that could be ambiguous, such as 1/l/I or O/0, from the passwords.")
 parser.add_argument("-a", "--alphabet", choices = [ "all", "chars", "phone" ], default = "all", help = "Specifies the input alphabet to use. Defaults to %(default)s.")
 parser.add_argument("-c", "--consecutive-filter", choices = [ "lalala", "qwertz" ], help = "Character alphabets can vary according to the given rules, for example passphrases can be generated that generate only consonant/vovel combinations ('lalala') or avoid thick finger combinations (for typing on a smart phone).")
@@ -59,6 +61,8 @@ alphabet = source_alphabet[args.alphabet]
 alphabet = set(alphabet)
 if not args.no_filter_ambiguous:
 	alphabet -= filtered_alphabet
+if args.filter_us_keyboard:
+	alphabet -= filtered_us_alphabet
 lalphabet = list(alphabet)
 
 if args.consecutive_filter is None:
