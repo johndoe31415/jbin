@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	dusort: Sortable, cachable "du" clone
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -23,6 +23,7 @@
 import sys
 import os
 import json
+import stat
 from FriendlyArgumentParser import FriendlyArgumentParser
 from FilesizeFormatter import FilesizeFormatter
 
@@ -33,6 +34,13 @@ parser.add_argument("directory", metavar = "directory", nargs = "?", type = str,
 args = parser.parse_args(sys.argv[1:])
 
 fsfmt = FilesizeFormatter()
+
+def get_filesize(filename):
+	stat_result = os.stat(filename)
+	if stat.S_ISREG(stat_result.st_mode):
+		return stat_result.st_blksize * stat_result.st_blocks
+	else:
+		return 0
 
 if args.cachefile is not None:
 	try:
@@ -62,7 +70,7 @@ if results is None:
 		for filename in files:
 			full_filename = dir_name + "/" + filename
 			if os.path.isfile(full_filename):
-				filesize = os.stat(full_filename).st_size
+				filesize = get_filesize(full_filename)
 				dir_results["size"] += filesize
 				results["total_size"] += filesize
 		results["data"][rel_dir] = dir_results
