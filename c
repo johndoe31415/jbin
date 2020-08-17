@@ -1051,6 +1051,24 @@ def inchfracs(mm) -> FncDescription(category = "Misc"):
 
 	return [ (fract, -100 * ((float(fract) * 25.4) - mm) / mm) for fract in fractions ]
 
+def idiotspk(text) -> FncDescription(category = "Misc"):
+	"""\
+	Idiotify some given text, alternate between uppercase and lowercase
+	characters."""
+	lower = True
+	result = [ ]
+	relevant_chars = set(string.ascii_uppercase + string.ascii_lowercase)
+	for char in text:
+		if char in relevant_chars:
+			if lower:
+				result.append(char.lower())
+			else:
+				result.append(char.upper())
+			lower = not lower
+		else:
+			result.append(char)
+	return "".join(result)
+
 def nPr(n, r) -> FncDescription(category = "Stochastical functions"):
 	"""Gives the number of permutations of r out of n."""
 	return math.factorial(n) // math.factorial(n - r)
