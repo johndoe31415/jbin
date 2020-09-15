@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	nmx: Show extended "nm" information about ELF binaries
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -56,6 +56,8 @@ class SymbolType(enum.Enum):
 
 parser = FriendlyArgumentParser(description = "Shows information about ELF executables.")
 parser.add_argument("-b", "--binary", metavar = "filename", type = str, default = "nm", help = "'nm' binary to use. Defaults to %(default)s.")
+parser.add_argument("-e", "--show-empty", action = "store_true", help = "Include symbols which do not have an associated size. By default, those are omitted.")
+parser.add_argument("-s", "--sort-by", choices = [ "addr", "size", "name" ], default = "addr", help = "Criterion to sort symbols by. Can be one of %(choices)s, defaults to %(default)s.")
 group = parser.add_mutually_exclusive_group()
 group.add_argument("-r", "--ram-only", action = "store_true", help = "Only show symbols that reside in RAM.")
 group.add_argument("-t", "--text-only", action = "store_true", help = "Only show symbols that reside in the text section.")
@@ -103,9 +105,19 @@ elif args.text_only:
 	])
 	symbols = [ symbol for symbol in symbols if symbol["symtype"] in ram_symbols ]
 
+if not args.show_empty:
+	symbols = [ symbol for symbol in symbols if symbol["size"] is not None ]
+if args.sort_by == "addr":
+	symbols.sort(key = lambda symbol: symbol["addr"])
+elif args.sort_by == "size":
+	symbols.sort(key = lambda symbol: (symbol["size"] or 0, symbol["addr"]))
+elif args.sort_by == "name":
+	symbols.sort(key = lambda symbol: symbol["name"])
+else:
+	raise NotImplementedError(args.sort_by)
 
-symbols = [ symbol for symbol in symbols if symbol["size"] is not None ]
-#symbols.sort(key = lambda symbol: symbol["addr"])
-symbols.sort(key = lambda symbol: symbol["size"])
 for symbol in symbols:
-	print("%8x %8d %-30s %s" % (symbol["addr"], symbol["size"], symbol["symtype"].name, symbol["name"]))
+	if symbol["size"] is not None:
+		print("%8x %8d %-30s %s" % (symbol["addr"], symbol["size"], symbol["symtype"].name, symbol["name"]))
+	else:
+		print("%8x %8s %-30s %s" % (symbol["addr"], "", symbol["symtype"].name, symbol["name"]))
