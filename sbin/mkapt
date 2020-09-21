@@ -35,6 +35,7 @@ definitions = [
 			("disco", "2019.04"),
 			("eoan", "2019.10"),
 			("focal", "2020.04"),
+			("groovy", "2020.10"),
 		],
 		"mirrors": [
 			"http://ftp.halifax.rwth-aachen.de/ubuntu/",
@@ -124,7 +125,7 @@ for (release_name, release_data) in definition["releases"]:
 		default_release = release_name
 		break
 
-release_query = [ (release_name, "%s (%s)" % (release_name, release_data)) for (release_name, release_date) in definition["releases"] ]
+release_query = [ (release_name, "%s (%s)" % (release_name, release_date)) for (release_name, release_date) in definition["releases"] ]
 print()
 release = query("Release", release_query, default_option = default_release)
 
