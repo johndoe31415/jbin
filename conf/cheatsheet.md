@@ -193,3 +193,35 @@ mount.cifs -o user=guest,pass=guest,uid=1000,gid=1000,dir_mode=0755,file_mode=06
   * Test email to check-auth@verifier.port25.com
   * [https://dkimvalidator.com/](https://dkimvalidator.com/)
   * Test email to Google
+
+## Setting up Wireguard server
+Create keys: wg genkey | tee /etc/wireguard/wg0-private.key | wg pubkey >/etc/wireguard/wg0-public.key
+
+Server config:
+```
+[Interface]
+Address = 172.16.0.1/24
+ListenPort = 51820
+PrivateKey = uAnx1QjAP5ZZ5nj2irlcAuwrtlCA/dHl3zMvmrD4Fm4=
+
+[Peer]
+PublicKey = UxkQ/WOxDQtuta2C8UMhNMDn0GsYPdj8rhmwX0Yjfwo=
+AllowedIPs = 172.16.0.2/32
+
+[Peer]
+PublicKey = /D3wtSoCwxU7KeChYhEH5TEBaDK3AnM6TRr4mkTNehk=
+AllowedIPs = 172.16.0.3/32
+```
+
+Client config:
+```
+[Interface]
+PrivateKey = KNCROjUKuGCnQxIoCwEKmPYyXPVzAS6i9rtgK0Qttm4=
+Address = 172.16.0.3/24
+
+[Peer]
+PublicKey = tT2zR6ChaZpWYx6L2B4T58laJKBOeE5Og9j8vJZJCW0=
+AllowedIPs = 172.16.0.0/24
+Endpoint = my-vpn-server.com:51820
+PersistentKeepalive = 60
+```
