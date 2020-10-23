@@ -1407,6 +1407,33 @@ def lambertW(x) -> FncDescription(category = "Numerical mathematics", aliases = 
 		wj = wj_new
 	return wj_new
 
+def ip2int(addr) -> FncDescription(category = "Network"):
+	"""Converts an IPv4 address to an integer value."""
+	return int.from_bytes(bytes(int(value) for value in addr.split(".")), byteorder = "big")
+
+def int2ip(int_addr) -> FncDescription(category = "Network"):
+	"""Converts an IPv4 integer into an address."""
+	return ".".join("%d" % (x) for x in int.to_bytes(int_addr, byteorder = "big", length = 4))
+
+def cidr(addr) -> FncDescription(category = "Network"):
+	"""Calculates a CIDRv4 address and subnet."""
+	CIDRAddress = collections.namedtuple("CIDRAddress", [ "ip", "block", "network_ip", "netmask_ip", "first_ip", "last_ip", "broadcast_ip", "host_count" ])
+	if "/" in addr:
+		(ip, blocksize) = addr.split("/")
+	else:
+		(ip, blocksize) = (addr, 32)
+	blocksize = int(blocksize)
+	ip_int = ip2int(ip)
+	mask_int = ((1 << blocksize) - 1) << (32 - blocksize)
+	network_ip_int = ip_int & mask_int
+	first_ip = network_ip_int + 1
+	last_ip = network_ip_int + (1 << (32 - blocksize)) - 2
+	broadcast_ip = last_ip + 1
+	host_count = last_ip - first_ip + 1
+	if host_count < 0:
+		host_count = 0
+	return CIDRAddress(ip = int2ip(ip_int), block = blocksize, network_ip = int2ip(network_ip_int), netmask_ip = int2ip(mask_int), first_ip = int2ip(first_ip), last_ip = int2ip(last_ip), broadcast_ip = int2ip(broadcast_ip), host_count = host_count)
+
 def testcases():
 	"""Runs several self-checks on the module."""
 	def approxeql(a, b):
