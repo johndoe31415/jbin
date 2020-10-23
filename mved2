@@ -1,0 +1,266 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	mved: Move files using an editor
+#	Copyright (C) 2020-2020 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import os
+import enum
+import tempfile
+import stat
+import collections
+import subprocess
+import shutil
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+default_editor = os.getenv("EDITOR") or os.getenv("VISUAL") or "/usr/bin/vim"
+
+parser = FriendlyArgumentParser(description = "Move or rename files interactively using an editor.")
+parser.add_argument("-e", "--editor", metavar = "filename", default = default_editor, help = "Specifies editor to use. Defaults to %(default)s.")
+parser.add_argument("-f", "--files", action = "store_true", help = "Include files in the enumeration.")
+parser.add_argument("-d", "--directories", action = "store_true", help = "Include directories in the enumeration.")
+parser.add_argument("-s", "--symlinks", action = "store_true", help = "Include symlinks in the enumeration.")
+parser.add_argument("-x", "--special", action = "store_true", help = "Include special files (e.g., block devices, character devices) in the enumeration.")
+parser.add_argument("-p", "--progress", action = "store_true", help = "Show movement/renaming progress.")
+parser.add_argument("-r", "--recurse", action = "store_true", help = "Recurse into subdirectories.")
+parser.add_argument("--hidden", action = "store_true", help = "Recurse into hidden subdirectories as well; by default, these are ignored.")
+parser.add_argument("-u", "--substitute", action = "store_true", help = "Substitute variables in names, such as ${mtime}, ${ctime}, ${size}.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("filename", metavar = "filename", nargs = "+", help = "File(s) to rename.")
+args = parser.parse_args(sys.argv[1:])
+
+class FileType(enum.IntEnum):
+	File = 1
+	Directory = 2
+	Symlink = 3
+	Other = 4
+
+class RenamingEngine():
+	def __init__(self, old_files, new_files):
+		assert(len(old_files) == len(new_files))
+		self._rename_ops = [ ]
+		for (old_filename, new_filename) in zip(old_files, new_files):
+			if old_filename != new_filename:
+				self._rename_ops.append((old_filename, new_filename))
+		self._old_to_new = { old: new for (old, new) in self._rename_ops }
+
+	def _create_tempfile_name(self, filename):
+		for i in range(100):
+			suffix = "_%s" % (os.urandom(8).hex())
+			tempfile_name = filename + suffix
+			if not os.path.exists(tempfile_name):
+				return tempfile_name
+		else:
+			raise Exception("Could not find temporary filename replacement for '%s', giving up." % (filename))
+
+	def _determine_order_of_operations(self):
+		order = [ ]
+		conflicts_handled = set()
+		for (old_filename, new_filename) in self._rename_ops:
+			if not os.path.exists(new_filename):
+				order.append((old_filename, new_filename))
+			else:
+				# New filename exists. Have we already handled it?
+				if old_filename not in conflicts_handled:
+					# No, try to find a cycle
+					cycle = [ old_filename ]
+					current = new_filename
+					while (current is not None) and (current != old_filename):
+						cycle.append(current)
+						current = self._old_to_new.get(current)
+					if current is not None:
+						# Conflict could successfully be resolved, cycle found. Determine tempfile.
+						tempfile = self._create_tempfile_name(cycle[-1])
+						cycle.reverse()
+						order.append((cycle[0], tempfile))
+						for (target, source) in zip(cycle, cycle[1:]):
+							order.append((source, target))
+						order.append((tempfile, cycle[-1]))
+						conflicts_handled |= set(cycle)
+					else:
+						print("Conflict: Unable to rename %s -> %s" % (old_filename, new_filename), file = sys.stderr)
+		return order
+
+	def run(self):
+		order = self._determine_order_of_operations()
+		for (old_filename, new_filename) in order:
+			print("%s -> %s" % (old_filename, new_filename))
+			shutil.move(old_filename, new_filename)
+
+class MoveEditor():
+	_DuplicateFileError = collections.namedtuple("DuplicateFileError", [ "name", "line1", "line2" ])
+
+	def __init__(self, args):
+		self._args = args
+		self._included_ftypes = None
+		self._source_list = [ ]
+		self._source_set = set()
+
+	@staticmethod
+	def _get_ftype(statres):
+		if stat.S_ISREG(statres.st_mode):
+			return FileType.File
+		elif stat.S_ISDIR(statres.st_mode):
+			return FileType.Directory
+		elif stat.S_ISLNK(statres.st_mode):
+			return FileType.Symlink
+		else:
+			return FileType.Other
+
+		print(stat)
+
+	def _enumerate_source(self, filename):
+		fullname = os.path.realpath(filename)
+		if fullname in self._source_set:
+			return
+		if fullname == "/":
+			return
+
+		try:
+			statres = os.stat(fullname)
+		except (FileNotFoundError, PermissionError) as e:
+			if self._args.verbose >= 1:
+				print("Ignoring %s: %s" % (filename, e))
+			return
+
+		ftype = self._get_ftype(statres)
+		if ftype in self._included_ftypes:
+			self._source_set.add(fullname)
+			self._source_list.append(fullname)
+
+		if (ftype == FileType.Directory) and self._args.recurse:
+			try:
+				for inner_filename in sorted(os.listdir(fullname)):
+					if self._args.hidden or (not inner_filename.startswith(".")):
+						self._enumerate_source(fullname + "/" + inner_filename)
+			except PermissionError as e:
+				if self._args.verbose >= 1:
+					print("Not recursing into %s: %s" % (filename, e))
+
+	def _enumerate_sources(self):
+		for filename in self._args.filename:
+			self._enumerate_source(filename)
+
+	def _determine_included_ftypes(self):
+		ftypes = set()
+		if self._args.files:
+			ftypes.add(FileType.File)
+		if self._args.directories:
+			ftypes.add(FileType.Directory)
+		if self._args.symlinks:
+			ftypes.add(FileType.Symlink)
+		if self._args.special:
+			ftypes.add(FileType.Other)
+		if len(ftypes) == 0:
+			ftypes = set(FileType)
+		return ftypes
+
+	def _localize_sources(self):
+		cwd = os.path.realpath(os.getcwd()) + "/"
+		localized_names = [ ]
+		for filename in self._source_list:
+			if filename.startswith(cwd):
+				localized_name = filename[ len(cwd) : ]
+			else:
+				localized_name = filename
+			localized_names.append(localized_name)
+		return localized_names
+
+	def _delocalize_sources(self, changed_filelist):
+		cwd = os.path.realpath(os.getcwd()) + "/"
+		absolute_list = [ ]
+		for filename in changed_filelist:
+			if filename.startswith("/"):
+				absolute_list.append(filename)
+			else:
+				absolute_list.append(cwd + filename)
+		return absolute_list
+
+	def _write_filelist(self, f, localized_sources):
+		f.write("\n".join(localized_sources))
+		f.write("\n")
+		f.flush()
+
+	def _edit_filelist(self, filename):
+		subprocess.check_call([ self._args.editor, filename ])
+
+	def _read_filelist(self, filename):
+		with open(filename) as f:
+			filelist = f.read().rstrip("\r\n").split("\n")
+		return filelist
+
+	def _confirm(self, prompt):
+		while True:
+			yn = input(prompt).lower()
+			if yn == "y":
+				return True
+			elif yn == "n":
+				return False
+
+	def _check_duplicates(self, changed_filelist):
+		if len(changed_filelist) == len(set(changed_filelist)):
+			return None
+		else:
+			# We have duplicates
+			seen = { }
+			for (lineno, filename) in enumerate(changed_filelist, 1):
+				if filename in seen:
+					return self._DuplicateFileError(name = filename, line1 = seen[filename], line2 = lineno)
+				seen[filename] = lineno
+
+	def _plausibilize_changed_filelist(self, changed_filelist):
+		if len(changed_filelist) != len(self._source_list):
+			if self._confirm("Original list had %d entries; changed list has %d. Retry editing (y/n)? " % (len(self._source_list), len(changed_filelist))):
+				return False
+			else:
+				print("Aborting after length mismatch in edited list.", file = sys.stderr)
+				sys.exit(1)
+
+		duplicate_files = self._check_duplicates(changed_filelist)
+		if duplicate_files is not None:
+			if self._confirm("Duplicate filename found: %s; first occurrence in line %d, then again in line %d. Retry editing (y/n)? " % (duplicate_files.name, duplicate_files.line1, duplicate_files.line2)):
+				return False
+			else:
+				print("Aborting after syntax error in edited list.", file = sys.stderr)
+				sys.exit(1)
+
+		return True
+
+	def run(self):
+		self._included_ftypes = self._determine_included_ftypes()
+		if self._args.verbose >= 2:
+			print("Including filetypes: %s" % (", ".join(ftype.name for ftype in sorted(self._included_ftypes))))
+		self._enumerate_sources()
+		self._localized_sources = self._localize_sources()
+
+		with tempfile.NamedTemporaryFile(prefix = "mved_", suffix = ".txt", mode = "w") as f:
+			self._write_filelist(f, self._localized_sources)
+			while True:
+				self._edit_filelist(f.name)
+				changed_filelist = self._read_filelist(f.name)
+				changed_filelist = self._delocalize_sources(changed_filelist)
+				if self._plausibilize_changed_filelist(changed_filelist):
+					break
+
+		renaming_engine = RenamingEngine(self._source_list, changed_filelist)
+		renaming_engine.run()
+
+mved = MoveEditor(args)
+mved.run()
