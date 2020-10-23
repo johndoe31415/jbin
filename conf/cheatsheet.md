@@ -197,7 +197,7 @@ mount.cifs -o user=guest,pass=guest,uid=1000,gid=1000,dir_mode=0755,file_mode=06
 ## Setting up Wireguard server
 Create keys: wg genkey | tee /etc/wireguard/wg0-private.key | wg pubkey >/etc/wireguard/wg0-public.key
 
-Server config:
+Server config `/etc/wireguard/wg0.conf`:
 ```
 [Interface]
 Address = 172.16.0.1/24
@@ -213,7 +213,7 @@ PublicKey = /D3wtSoCwxU7KeChYhEH5TEBaDK3AnM6TRr4mkTNehk=
 AllowedIPs = 172.16.0.3/32
 ```
 
-Client config:
+Client config `/etc/wireguard/wg0.conf`:
 ```
 [Interface]
 PrivateKey = KNCROjUKuGCnQxIoCwEKmPYyXPVzAS6i9rtgK0Qttm4=
@@ -225,3 +225,8 @@ AllowedIPs = 172.16.0.0/24
 Endpoint = my-vpn-server.com:51820
 PersistentKeepalive = 60
 ```
+
+Enable systemd: systemctl enable wg-quick@wg0
+
+## Ubuntu unused locales
+Edit /var/lib/locales/supported.d/*
