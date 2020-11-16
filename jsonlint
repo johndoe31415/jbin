@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	jsonlint: Pretty-print JSON data
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -22,6 +22,15 @@
 
 import json
 import sys
+import collections
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Format a JSON file nicely.")
+parser.add_argument("-s", "--sort-keys", choices = [ "alphabetical", "keep" ], default = "alphabetical", help = "Sort the keys of dicts in the described fashion. Can be one of %(choices)s, defaults to %(default)s.")
+parser.add_argument("-o", "--output-format", choices = [ "pretty", "oneline", "brief" ], default = "pretty", help = "Show the output in the described fashion. Can be one of %(choices)s, defaults to %(default)s.")
+parser.add_argument("filename", metavar = "filename", nargs = "?", help = "Lint this filename. If omitted, read from stdin.")
+args = parser.parse_args(sys.argv[1:])
+
 
 if len(sys.argv) > 1:
 	infile = sys.argv[1]
@@ -29,5 +38,13 @@ if len(sys.argv) > 1:
 		data = f.read()
 else:
 	data = sys.stdin.read()
-data = json.loads(data)
-print(json.dumps(data, indent = 4, sort_keys = True))
+data = json.loads(data, object_pairs_hook = collections.OrderedDict)
+
+if args.output_format == "pretty":
+	print(json.dumps(data, indent = 4, sort_keys = args.sort_keys == "alphabetical"))
+elif args.output_format == "oneline":
+	print(json.dumps(data, sort_keys = args.sort_keys == "alphabetical"))
+elif args.output_format == "brief":
+	print(json.dumps(data, separators = (",", ":"), sort_keys = args.sort_keys == "alphabetical"))
+else:
+	raise NotImplementedError(args.output_format)
