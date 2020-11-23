@@ -58,7 +58,7 @@ def fmt_secs(total_seconds):
 	return "%d:%02d:%02d" % (hrs, mins, secs)
 
 parser = FriendlyArgumentParser(description = "Transcode video and reduce its quality/size")
-parser.add_argument("-w", "--whatsapp", action = "store_true", help = "Choose older codecs to create videos that can be played by WhatsApp.")
+parser.add_argument("-c", "--codec", choices = [ "x265", "x264", "copy" ], default = "x265", help = "Transcode to the specified codec. Only x264 can be played by WhatsApp. Choices are %(choices)s, default is %(default)s.")
 parser.add_argument("-s", "--size", metavar = "geometry", type = scale_geometry, default = "1920x1080", help = "Output geometry that video should be scaled to. Defaults to %(default)s. Can also be a single value that is typically recognized, such as 480, 720, 1080 or uhd.")
 parser.add_argument("--start", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to start rendering. Can be of format ss or mm:ss or hh:mm:ss.")
 parser.add_argument("--end", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to end rendering. Can be of format ss or mm:ss or hh:mm:ss.")
@@ -84,14 +84,26 @@ if (args.end is not None):
 #cmd += [ "-map_metadata", "0" ]
 #cmd += [ "-map_metadata", "0", "-movflags", "use_metadata_tags" ]
 #cmd += [ "-map_metadata", "-1" ]
-cmd += [ "-vf", "scale=w=%d:h=%d" % (args.size[0], args.size[1]) ]
-if not args.whatsapp:
-	# Modern codecs
+
+if args.codec != "copy":
+	cmd += [ "-vf", "scale=w=%d:h=%d" % (args.size[0], args.size[1]) ]
+
+if args.codec == "x265":
+	# Video codec is x265
 	cmd += [ "-c:v", "libx265", "-crf", "28" ]
-else:
-	# Old garbage
+elif args.codec == "x264":
+	# Video codec is x264
 	cmd += [ "-c:v", "libx264", "-profile:v", "baseline", "-level", "3.0", "-pix_fmt", "yuv420p" ]
-cmd += [ "-c:a", "aac", "-b:a", "128k" ]
+elif args.codec == "copy":
+	# Video is not transcoded
+	cmd += [ "-c:v", "copy" ]
+else:
+	raise NotImplementedError(args.codec)
+
+if args.codec != "copy":
+	cmd += [ "-c:a", "aac", "-b:a", "128k" ]
+else:
+	cmd += [ "-c:a", "copy" ]
 cmd += [ args.outfile ]
 if args.verbose:
 	print(" ".join(cmd))
