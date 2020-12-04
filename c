@@ -1214,6 +1214,14 @@ def urldecode(uri) -> FncDescription(category = "String functions"):
 	"""Decodes an URI."""
 	return urllib.parse.unquote(uri)
 
+def urlextract(uri) -> FncDescription(category = "String functions"):
+	"""Extracts information from an URI's query parameter."""
+	query = urllib.parse.urlparse(uri).query
+	query = urllib.parse.parse_qs(query)
+	for (key, values) in query.items():
+		for value in values:
+			print("%s %s" % (key, value))
+
 def pwgen_bits(bitcnt, ambiguous = False, special = False) -> FncDescription(category = "Misc"):
 	"""\
 	Generates a password with at least n bits. Can include special
