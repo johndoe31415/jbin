@@ -158,8 +158,11 @@ Device information:
 v4l2-ctl --list-formats
 v4l2-ctl --list-formats-ext
 
-Playback:
+Playback mplayer:
 mplayer -tv driver=v4l2:width=1280:height=720:outfmt=mjpg:device=/dev/video0 tv://
+
+Playback vlc:
+vlc v4l2:// :live-caching=300 :v4l2-width=1280 :v4l2-height=720 :v4l2-fps=30 :v4l2-chroma=mjpg
 
 Recording audio and video:
 ffmpeg -f alsa -i default -f video4linux2 -framerate 30 -video_size 1920x1080 -input_format mjpeg -i /dev/video0 audio_and_video.mkv
