@@ -233,3 +233,15 @@ Enable systemd: systemctl enable wg-quick@wg0
 
 ## Ubuntu unused locales
 Edit /var/lib/locales/supported.d/*
+
+## Monitor sources
+EDID protocol control via ddcutil
+Show supported modes: get-edid | parse-edid
+Show monitors: ddcutil detect
+Show all VCP properties: ddcutil vcpinfo
+
+Example property: 0x60 ("Input Source")
+Show particular VCP property: ddcutil vcpinfo 60 -v
+Set a particular input source (set display 2 to DisplayPort-1): ddcutil setvcp -d 2 60 0x0f
+
+Disable monitor hotplug events in Mate: gsettings set org.mate.SettingsDaemon.plugins.xrandr active false
