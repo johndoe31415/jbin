@@ -245,3 +245,21 @@ Show particular VCP property: ddcutil vcpinfo 60 -v
 Set a particular input source (set display 2 to DisplayPort-1): ddcutil setvcp -d 2 60 0x0f
 
 Disable monitor hotplug events in Mate: gsettings set org.mate.SettingsDaemon.plugins.xrandr active false
+
+## HBCI PIN/TAN configuration Comdirect
+USER_ID="12345670"
+BIC="COBADEHD001"
+BLZ="20041133"
+NAME="comdirect"
+UNIQUE_ID="1"
+UNIQUE_ACCOUNT_ID="2"
+
+aqhbci-tool4 adduser -t pintan -u "$USER_ID" -s https://fints.comdirect.de/fints -N "$NAME" -b "$BLZ"
+aqhbci-tool4 listaccounts
+aqhbci-tool4 getsysid -u "$UNIQUE_ID"
+aqhbci-tool4 listitanmodes -u "$UNIQUE_ID"
+aqhbci-tool4 setitanmode -u "$UNIQUE_ID" -m 6902
+aqhbci-tool4 getaccounts -u "$UNIQUE_ID"
+
+aqhbci-tool4 listaccounts -v
+aqbanking-cli request --aid="$UNIQUE_ACCOUNT_ID" -c "output_data.txt" --transactions
