@@ -1,0 +1,105 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	skeleton_install: Install or update the skeleton scripts
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import shutil
+import pwd
+import collections
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Install or update skeleton scripts.")
+parser.add_argument("--force-overwrite-all", action = "store_true", help = "Force overwrite of all scripts, even those which have local modifications.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("username", metavar = "username", nargs = "*", help = "User name(s) to install the skeleton scripts under; when omitted, only local user is used")
+args = parser.parse_args(sys.argv[1:])
+
+class SkeletonInstaller():
+	_PROTECT_STRING = b"Remove this line if you do not wish it to be overwritten by an update"
+
+	def __init__(self, skeleton_root, overwrite_all = False, verbose = False):
+		self._skeleton_root = skeleton_root
+		self._overwrite_all = overwrite_all
+		self._verbose = verbose
+		self._files = self._scan_skeleton_dir()
+
+	def _scan_skeleton_dir(self):
+		found_files = [ ]
+		for (dirname, subdirs, files) in os.walk(self._skeleton_root):
+			if not dirname.endswith("/"):
+				dirname += "/"
+			for filename in files:
+				full_filename = dirname + filename
+				if os.path.isfile(full_filename):
+					rel_dirname = dirname[len(self._skeleton_root) : ]
+					rel_filename = rel_dirname + filename
+					found_files.append(rel_filename)
+		found_files.sort()
+		return found_files
+
+	def _is_unmodified(self, filename):
+		with open(filename, "rb") as f:
+			content = f.read(1024 * 1024)
+		return self._PROTECT_STRING in content
+
+	def _mkdirs(self, dirname, uid, gid):
+		full_path = ""
+		for rel_name in dirname.split("/"):
+			full_path += rel_name + "/"
+			if not os.path.exists(full_path):
+				# Need to create directory
+				os.mkdir(full_path)
+				os.chown(full_path, uid, gid)
+
+	def _install_file(self, src_filename, dst_filename, uid, gid):
+		if self._overwrite_all or (not os.path.exists(dst_filename)) or self._is_unmodified(dst_filename):
+			if self._verbose:
+				print("%s -> %s" % (src_filename, dst_filename))
+			self._mkdirs(os.path.dirname(dst_filename), uid, gid)
+			shutil.copy(src_filename, dst_filename)
+			os.chown(dst_filename, uid, gid)
+		else:
+			print("Skipping: %s" % (dst_filename))
+
+	def run_user(self, username):
+		if self._verbose:
+			print("Running for user %s" % (username))
+		userinfo = pwd.getpwnam(username)
+		for filename in self._files:
+			src_filename = self._skeleton_root + filename
+			dst_filename = userinfo.pw_dir
+			if not dst_filename.endswith("/"):
+				dst_filename += "/"
+			dst_filename += filename
+			self._install_file(src_filename, dst_filename, userinfo.pw_uid, userinfo.pw_gid)
+
+	def run_local(self):
+		username = pwd.getpwuid(os.getuid()).pw_name
+		self.run_user(username)
+
+skeleton_root = os.path.realpath(os.path.dirname(__file__)) + "/skeleton/"
+skel_installer = SkeletonInstaller(skeleton_root, overwrite_all = args.force_overwrite_all, verbose = (args.verbose >= 1))
+if len(args.username) == 0:
+	skel_installer.run_local()
+else:
+	for username in args.username:
+		skel_installer.run_user(username)
