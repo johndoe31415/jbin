@@ -82,7 +82,6 @@ else
 
 endif " has("autocmd")
 
-colorscheme darkblue
 set nobackup
 set nowrap
 set tabstop=4
@@ -178,8 +177,6 @@ au BufReadPost * if line("'\"") > 0|if line("'\"") <= line("$")|exe("norm '\"")|
 
 set foldmethod=marker
 
-colorscheme zellner
-set background=light
 set guifont=Latin\ Modern\ Mono\ 12
 
 " Previous and next on F11 and F12 (e.g., when using linter)
