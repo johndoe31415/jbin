@@ -263,3 +263,8 @@ aqhbci-tool4 getaccounts -u "$UNIQUE_ID"
 
 aqhbci-tool4 listaccounts -v
 aqbanking-cli request --aid="$UNIQUE_ACCOUNT_ID" -c "output_data.txt" --transactions
+
+## C str(n) variant cheatsheet
+char buffer[128];
+sizeof(buffer) - 1: strncpy
+sizeof(buffer): snprintf, fgets
