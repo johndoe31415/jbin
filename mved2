@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	mved: Move files using an editor
-#	Copyright (C) 2020-2020 Johannes Bauer
+#	Copyright (C) 2020-2021 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -75,7 +75,8 @@ class RenamingEngine():
 		conflicts_handled = set()
 		for (old_filename, new_filename) in self._rename_ops:
 			if not os.path.exists(new_filename):
-				order.append((old_filename, new_filename))
+				if new_filename not in conflicts_handled:
+					order.append((old_filename, new_filename))
 			else:
 				# New filename exists. Have we already handled it?
 				if old_filename not in conflicts_handled:
@@ -93,9 +94,12 @@ class RenamingEngine():
 						for (target, source) in zip(cycle, cycle[1:]):
 							order.append((source, target))
 						order.append((tempfile, cycle[-1]))
-						conflicts_handled |= set(cycle)
 					else:
-						print("Conflict: Unable to rename %s -> %s" % (old_filename, new_filename), file = sys.stderr)
+						# Conflict could be resolved without cycle
+						cycle.reverse()
+						for (target, source) in zip(cycle, cycle[1:]):
+							order.append((source, target))
+					conflicts_handled |= set(cycle)
 		return order
 
 	def run(self):
