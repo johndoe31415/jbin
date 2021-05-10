@@ -32,6 +32,10 @@ passwd the first time around). It's probably not very useful for anyone else.
   * touch /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
   * nmcli dev set eth0 managed yes
 
+To disable NetworkManager from managing an interface:
+
+	* nmcli dev set eth0 managed no
+
 
 ## systemd-resolved "Temporary failure in name resolution"
   * systemd-resolve --status
@@ -268,3 +272,91 @@ aqbanking-cli request --aid="$UNIQUE_ACCOUNT_ID" -c "output_data.txt" --transact
 char buffer[128];
 sizeof(buffer) - 1: strncpy
 sizeof(buffer): snprintf, fgets
+
+## Headless VNC Server
+apt-get install tigervncserver mate-desktop-environment
+vncpasswd
+vncserver -localhost no -geometry 1900x900
+
+## Debian /etc/network/interfaces
+auto eth0
+allow-hotplug eth0
+iface eth0 inet dhcp
+
+auto eth0
+allow-hotplug eth0
+iface eth0 inet static
+	address 192.168.1.99/24
+	gateway 192.168.1.1
+
+auto eth0.123
+allow-hotplug eth0.123
+iface eth0.123 inet static
+	address 192.168.2.99/24
+	vlan-raw-device eth0
+	mtu 1496
+
+## Prevent renaming of VLAN devices
+cat >/etc/systemd/network/10-vlan.link
+[Match]
+Driver=*802.1Q*
+[Link]
+NamePolicy=kernel
+
+update-initramfs -u
+
+## Rename network interface temporarily
+ifconfig enx12345678 down
+ip link set enx12345678 name eth9
+
+## VLAN with ip instead of vconfig
+
+ip link add link eth0 name eth0.100 type vlan id 100
+ip -d link show eth0.100
+ip addr add 192.168.100.1/24 brd 192.168.100.255 dev eth0.100
+ip link set dev eth0.100 up
+
+ip link delete eth0.100
+
+## Enable HDMI at bootup, even when unplugged
+Kernel commandline: video=HDMI-1:e
+
+## Show grub menu
+/etc/default/grub
+GRUB_TIMEOUT_STYLE=menu
+
+## KVM virutalisation
+
+Installation of packets:
+apt-get install libvirt-daemon libvirt-daemon-system libvirt-clients virt-viewer virtinst libosinfo-bin
+
+Listing all current Domains:
+virsh list
+
+Installing a new system:
+virt-install --connect qemu:///system --name testvm --ram 1024 --os-type=linux --os-variant=debian10 --location http://ftp.de.debian.org/debian/dists/stable/main/installer-amd64/ --accelerate --disk path=/tmp/foo --vnc --noautoconsole --network network=default
+
+Connecting to a system:
+virt-viewer --connect qemu:///system testvm
+virt-viewer --connect qemu+ssh://joe@127.0.0.1/system testvm
+virsh --connect qemu:///system console testvm
+
+Dumping the configuration:
+virsh dumpxml testvm
+
+Attaching a CDROM:
+virsh attach-disk testvm /home/joe/grml64.iso hdc  --type cdrom --mode readonly --targetbus sata --config
+virsh change-media testvm hdc --eject
+virsh change-media testvm hdc --source /home/joe/grm64.iso
+
+Starting and stopping VM:
+virsh start testvm
+virsh destroy testvm
+
+Create new network:
+<network>
+	<name>internal</name>
+	<uuid>f9a1544d-3adb-4a96-9e5c-df2ce4d3407c</uuid>
+</network>
+
+virsh net-create internal.xml
