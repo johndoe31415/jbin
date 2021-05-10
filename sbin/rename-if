@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
-#	Copyright (C) 2018-2018 Johannes Bauer
+#	Copyright (C) 2018-2021 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -23,16 +23,15 @@ import os
 import sys
 import re
 import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
 
-if len(sys.argv) != 3:
-	print("%s [old ifname] [new ifname]" % (sys.argv[0]), file = sys.stderr)
-	print(file = sys.stderr)
-	print("Renames a network interface from its old name to a new one.", file = sys.stderr)
-	print("Creates systemd rules to make the change permanent.", file = sys.stderr)
-	sys.exit(1)
+parser = FriendlyArgumentParser(description = "Renames a network interface from its old name to a new one.")
+parser.add_argument("-t", "--temporary", action = "store_true", help = "By default, systemd rules are created to make the change permanent. With this option, changes remain temporary.")
+parser.add_argument("old_ifname", metavar = "old_ifname", help = "Current interface name that should be renamed")
+parser.add_argument("new_ifname", metavar = "new_ifname", help = "New name the interface should be given")
+args = parser.parse_args(sys.argv[1:])
 
-(old_if, new_if) = sys.argv[1:]
-link_info = subprocess.check_output([ "ip", "-o", "link", "list", old_if ]).decode("ascii")
+link_info = subprocess.check_output([ "ip", "-o", "link", "list", args.old_ifname ]).decode("ascii")
 mac_re = re.compile("link/ether (?P<mac>[a-f0-9]{2}:[a-f0-9]{2}:[a-f0-9]{2}:[a-f0-9]{2}:[a-f0-9]{2}:[a-f0-9]{2})")
 result = mac_re.search(link_info)
 if result is None:
@@ -40,18 +39,23 @@ if result is None:
 result = result.groupdict()
 mac = result["mac"]
 
-filename = "/etc/systemd/network/01-netif-%s.link" % (new_if)
-if os.path.isfile(filename):
-	raise Exception("Already exists: %s" % (filename))
+if not args.temporary:
+	# Persist changes
+	filename = "/etc/systemd/network/01-netif-%s.link" % (new_if)
+	if os.path.isfile(filename):
+		raise Exception("Already exists: %s" % (filename))
 
-with open(filename, "w") as f:
-	print("[Match]", file = f)
-	print("MACAddress=%s" % (mac), file = f)
-	print(file = f)
-	print("[Link]", file = f)
-	print("Name=%s" % (new_if), file = f)
+	with open(filename, "w") as f:
+		print("[Match]", file = f)
+		print("MACAddress=%s" % (mac), file = f)
+		print("Type=!vlan bridge", file = f)
+		print(file = f)
+		print("[Link]", file = f)
+		print("Name=%s" % (new_if), file = f)
 
-subprocess.check_call(["ip", "link", "set", old_if, "down" ])
-subprocess.check_call(["ip", "link", "set", old_if, "name", new_if ])
-subprocess.check_call(["ip", "link", "set", new_if, "up" ])
-subprocess.check_call([ "update-initramfs", "-u" ])
+subprocess.check_call(["ip", "link", "set", args.old_ifname, "down" ])
+subprocess.check_call(["ip", "link", "set", args.old_ifname, "name", args.new_ifname ])
+subprocess.check_call(["ip", "link", "set", args.new_ifname, "up" ])
+
+if not args.temporary:
+	subprocess.check_call([ "update-initramfs", "-u" ])
