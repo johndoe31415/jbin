@@ -360,3 +360,7 @@ Create new network:
 </network>
 
 virsh net-create internal.xml
+
+## Debugging Routing Decision
+ip route show to match 1.2.3.4
+ip route get to 1.2.3.4 from 2.3.4.5 iif eth0
