@@ -102,6 +102,11 @@ Delete user
 Change password
   * ALTER USER foouser WITH ENCRYPTED PASSWORD 'foopass';
 
+## MariaDB setup
+  * CREATE DATABASE foodb;
+  * CREATE USER foouser IDENTIFIED BY 'foopass';
+  * GRANT ALL privileges ON foodb.* TO foouser;
+
 ## Bugfix: Ubuntu/Thunderbird shows huge emojis in subject line
   * apt-get install fonts-symbola
 
