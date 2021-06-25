@@ -369,3 +369,21 @@ virsh net-create internal.xml
 ## Debugging Routing Decision
 ip route show to match 1.2.3.4
 ip route get to 1.2.3.4 from 2.3.4.5 iif eth0
+
+## Resetting Mate and removing all custom configuration
+Remove:
+
+~/.config/autostart
+~/.config/caja
+~/.config/dconf
+~/.config/mate
+~/.config/mate-session
+~/.config/menus
+
+## Editing the Mate menu
+mozo
+
+## Where the Mate menu is stored
+*.desktop starters: ~/.local/share/applications
+*.directory directories: ~/.local/share/desktop-directories
+Tying them together: ~/.config/menus/mate-applications.menu
