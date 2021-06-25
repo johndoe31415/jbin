@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	mkapt: Create /etc/apt/sources.list
-#	Copyright (C) 2020-2020 Johannes Bauer
+#	Copyright (C) 2020-2021 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -36,6 +36,8 @@ definitions = [
 			("eoan", "2019.10"),
 			("focal", "2020.04"),
 			("groovy", "2020.10"),
+			("hirsute", "2021.04"),
+			("impish", "2021.10"),
 		],
 		"mirrors": [
 			"http://ftp.halifax.rwth-aachen.de/ubuntu/",
