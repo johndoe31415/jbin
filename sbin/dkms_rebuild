@@ -1,7 +1,7 @@
 #!/bin/bash
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	dkms_rebuild: Rebuild all DKMS kernel modules for a particular kernel version
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2021 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -20,13 +20,27 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
+VERBOSE="0"
+KERNEL_VERSION=""
+while [ "$1" != "" ]; do
+	if [ "$1" == "-v" ]; then
+		VERBOSE="1"
+	elif [ "$1" == "--help" ]; then
+		echo "$0 [-v] (kernel version])"
+		exit 1
+	else
+		KERNEL_VERSION="$1"
+	fi
+	shift
+done
 
-if [ "$#" != "1" ]; then
-	echo "$0 [kernel version]"
-	exit 1
+if [ "$KERNEL_VERSION" == "" ]; then
+	KERNEL_VERSION=`uname -r`
+	if [ "$VERBOSE" == "1" ]; then
+		echo "Building for currently running kernel: ${KERNEL_VERSION}"
+	fi
 fi
 
-KERNEL_VERSION="$1"
 
 if [ -d "/var/lib/dkms" ]; then
 	find /var/lib/dkms -mindepth 2 -maxdepth 2 -type d | cut -c 15- | while read DKMS_MODULE_VERSION; do
@@ -34,6 +48,9 @@ if [ -d "/var/lib/dkms" ]; then
 		DKMS_VERSION=`echo "$DKMS_MODULE_VERSION" | awk -F '/' '{print $2}'`
 		echo "Found DKMS module ${DKMS_MODULE} in module version ${DKMS_VERSION}, trying to build for kernel ${KERNEL_VERSION}"
 		dkms remove "${DKMS_MODULE}/${DKMS_VERSION}" -k "${KERNEL_VERSION}"
+		if [ "$VERBOSE" == "1" ]; then
+			echo "dkms build -m \"${DKMS_MODULE}/${DKMS_VERSION}\" -k \"${KERNEL_VERSION}\""
+		fi
 		dkms build -m "${DKMS_MODULE}/${DKMS_VERSION}" -k "${KERNEL_VERSION}"
 		dkms install -m "${DKMS_MODULE}/${DKMS_VERSION}" -k "${KERNEL_VERSION}"
 	done
