@@ -1,0 +1,71 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	rekill: Kill processes that are searched for using a given regex
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import re
+import sys
+import os
+import signal
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
+from FilesizeFormatter import FilesizeFormatter
+
+def signal_name_or_num(text):
+	if text.isdigit():
+		return int(text)
+	else:
+		return getattr(signal.Signals, text)
+
+parser = FriendlyArgumentParser()
+parser.add_argument("-s", "--signal", metavar = "signal", type = signal_name_or_num, default = "SIGHUP", help = "Signal name or number to deliver. Defaults to %(default)s.")
+parser.add_argument("-f", "--force", action = "store_true", help = "Do not ask for confirmation, kill directly.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Be more verbose during the process.")
+parser.add_argument("regex", metavar = "regex", help = "Regex to kill")
+args = parser.parse_args(sys.argv[1:])
+
+regex = re.compile(args.regex, flags = re.IGNORECASE)
+
+procs = subprocess.check_output([ "ps", "ax" ]).decode()
+proc_re = re.compile(r"^\s*(?P<pid>\d+)\s+(?P<pts>[^\s]+)\s+(?P<state>[^\s]+)\s+(?P<runtime>[^\s]+)\s+(?P<cmdline>.*)", flags = re.MULTILINE)
+mypid = os.getpid()
+kill_list = [ ]
+for match in proc_re.finditer(procs):
+	match = match.groupdict()
+
+	match["pid"] = int(match["pid"])
+	if match["pid"] == mypid:
+		continue
+
+	result = regex.search(match["cmdline"])
+	if result is not None:
+		kill_list.append(match)
+
+if not args.force:
+	print("Killing %d processes:" % (len(kill_list)))
+	for kill_entry in kill_list:
+		print("%7d %s" % (kill_entry["pid"], kill_entry["cmdline"]))
+	yn = input("Proceed (y/n)? ").lower()
+	if yn != "y":
+		print("Aborted.")
+		sys.exit(1)
+
+for kill_entry in kill_list:
+	os.kill(kill_entry["pid"], args.signal)
