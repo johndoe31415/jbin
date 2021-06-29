@@ -1,0 +1,38 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	inhibit_screensaver: Wiggle mouse a bit to prevent screensaver from activating
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import time
+import subprocess
+import os
+import sys
+
+# Double fork to go to background
+if os.fork() != 0:
+	sys.exit(0)
+if os.fork() != 0:
+	sys.exit(0)
+
+movement = 1
+while True:
+	subprocess.check_call([ "xdotool", "mousemove_relative", "--", str(movement), "0" ])
+	time.sleep(60)
+	movement = -movement
