@@ -1,0 +1,3 @@
+[org/mate/marco/window-keybindings]
+move-to-monitor-e='<Primary><Shift>KP_Right'
+move-to-monitor-w='<Primary><Shift>KP_Left'
