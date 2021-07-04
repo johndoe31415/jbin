@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	c: General-purpose scientific/cryptographic calculator
-#	Copyright (C) 2009-2020 Johannes Bauer
+#	Copyright (C) 2009-2021 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -233,67 +233,80 @@ def frcformat(fraction, length = 20) -> FncDescription(category = "Floating poin
 	postcomma = "".join([ str(digit) for digit in digits ])
 	return "%s.%s" % (precomma, postcomma)
 
-def pick_arb_flt(floatvalue, exponentbits, mantissabits) -> FncDescription(category = "Floating point"):
-	"""Picks apart an arbitrary float value (float or str -> dict)."""
-	if isinstance(floatvalue, str):
-		floatvalue = Fraction(floatvalue)
-	signbit = (floatvalue < 0)
-	if floatvalue < 0:
-		floatvalue = -floatvalue
-	integral = int(floatvalue)
-	fraction = floatvalue - integral
+def combine_arb_flt(exponent_bits, mantissa_bits, sign_bit, exponent, mantissa) -> FncDescription(category = "Floating point"):
+	"""\
+	Combines an IEC-741 float value by assembling the different components into
+	one integer value."""
+	assert((sign_bit == 0) or (sign_bit == 1))
+	exponent += (2 ** (exponent_bits - 1)) - 1
+	value = (sign_bit << (exponent_bits + mantissa_bits)) | (exponent << mantissa_bits) | (mantissa << 0)
+	return value
 
-	if 0 < integral <= 1:
-		exponent = 0
-		binint = ""
-		if integral == 0:
-			while fraction < 1:
-				fraction *= 2
-				exponent -= 1
-			fraction -= 1
+__FloatingPointValue = collections.namedtuple("FloatingPointValue", [ "value", "exponent_bits", "mantissa_bits", "sign_bit", "mantissa", "exponent", "combined" ])
+def encode_arb_flt(float_value, exponent_bits, mantissa_bits) -> FncDescription(category = "Floating point"):
+	"""\
+	Represent a floating point value (float or str) in IEEE-741 representation
+	(normalized floating point)."""
+	original_float_value = float_value
+	float_value = Fraction(float_value)
+
+	sign_bit = int(float_value < 0)
+	if float_value < 0:
+		float_value = -float_value
+
+	if float_value == 0:
+		exponent = -((2 ** (exponent_bits - 1)) - 1)
 	else:
-		# WAT
-		print(integral)
-		binint = bin(integral)[3:]
-		exponent = len(binint)
-	binfrc = flttobin(fraction, mantissabits)
+		exponent = 0
 
-	mantissaval = int((binint + binfrc)[:mantissabits], 2)
+	# Normalize the float value
+	while 0 < float_value < 1:
+		exponent -= 1
+		float_value *= 2
+	while float_value >= 2:
+		exponent += 1
+		float_value /= 2
+	assert(0 <= float_value < 2)
 
-	signval = [ 0, 1 ][signbit]
-	return { "sign": signval, "exponent": exponent, "mantissa": mantissaval }
+	# Also include one leading and one trailing bit (for rounding purposes)
+	mantissa_list = [ ]
+	for bit in range(mantissa_bits + 2):
+		if float_value >= 1:
+			next_bit = 1
+			float_value -= 1
+		else:
+			next_bit = 0
+		float_value *= 2
+		mantissa_list.append(next_bit)
 
-def make_arb_flt(exponentbits, mantissabits, sign, exponent, mantissa) -> FncDescription(category = "Floating point"):
-	"""Creates an arbitrary float value (tuple -> float)."""
-	assert((sign == 0) or (sign == 1))
-	exponent += (2 ** (exponentbits - 1)) - 1
-	value = (sign << (exponentbits + mantissabits)) | (exponent << mantissabits) | (mantissa << 0)
-	return value
+	# Do not encode the leading and trailing bit
+	mantissa = 0
+	for bit in mantissa_list[ 1 : -1]:
+		mantissa = (mantissa << 1) | bit
 
-def encode_arb_flt(floatvalue, exponentbits, mantissabits) -> FncDescription(category = "Floating point"):
-	"""Encodes an arbitrary float value (float -> int)."""
-	picked = pick_arb_flt(floatvalue, exponentbits, mantissabits)
-	sign = picked["sign"]
-	exponent = picked["exponent"]
-	mantissa = picked["mantissa"]
+	# Round up if last bit 1
+	if mantissa_list[-1] == 1:
+		mantissa += 1
 
-	return make_arb_flt(exponentbits, mantissabits, sign, exponent, mantissa)
+	combined = combine_arb_flt(exponent_bits, mantissa_bits, sign_bit, exponent, mantissa)
+	return __FloatingPointValue(value = original_float_value, exponent_bits = exponent_bits, mantissa_bits = mantissa_bits, sign_bit = sign_bit, mantissa = mantissa, exponent = exponent, combined = combined)
 
-def decode_arb_flt(intvalue, exponentbits, mantissabits) -> FncDescription(category = "Floating point"):
+def decode_arb_flt(combined, exponent_bits, mantissa_bits) -> FncDescription(category = "Floating point"):
 	"""Decodes an arbitrary float value (int -> Fraction)"""
-	assert(isinstance(intvalue, int))
-	assert(isinstance(exponentbits, int))
-	assert(isinstance(mantissabits, int))
-	signbit = (intvalue & (1 << (exponentbits + mantissabits))) != 0
-	exponentmask = ((1 << exponentbits) - 1) << mantissabits
-	mantissamask = ((1 << mantissabits) - 1) << 0
-	exponentval = (intvalue & exponentmask) >> mantissabits
-	exponent = exponentval - (2 ** (exponentbits - 1)) + 1
-	mantissa = intvalue & mantissamask
-	value = (2 ** exponent) * (1 + Fraction(mantissa / ((1 << mantissabits) - 1)))
-	if signbit:
-		value = -value
-	return value
+	assert(isinstance(combined, int))
+	assert(isinstance(exponent_bits, int))
+	assert(isinstance(mantissa_bits, int))
+	sign_bit = int((combined & (1 << (exponent_bits + mantissa_bits))) != 0)
+	exponentmask = ((1 << exponent_bits) - 1) << mantissa_bits
+	mantissamask = ((1 << mantissa_bits) - 1) << 0
+	exponentval = (combined & exponentmask) >> mantissa_bits
+	exponent = exponentval - (2 ** (exponent_bits - 1)) + 1
+	mantissa = combined & mantissamask
+	float_value = (2 ** exponent) * (1 + Fraction(mantissa / ((1 << mantissa_bits) - 1)))
+	if sign_bit:
+		float_value = -float_value
+
+	return __FloatingPointValue(value = float_value, exponent_bits = exponent_bits, mantissa_bits = mantissa_bits, sign_bit = sign_bit, mantissa = mantissa, exponent = exponent, combined = combined)
 
 def encodeflt(floatvalue) -> FncDescription(category = "Floating point"):
 	"""Encodes a 32-bit float (float -> int)."""
@@ -310,22 +323,6 @@ def decodeflt(intvalue) -> FncDescription(category = "Floating point"):
 def decodedbl(intvalue) -> FncDescription(category = "Floating point"):
 	"""Decodes a 64-bit double value (int -> float)."""
 	return decode_arb_flt(intvalue, 11, 52)
-
-def pickflt(floatvalue) -> FncDescription(category = "Floating point"):
-	"""Picks a 32-bit float apart (float -> dict)."""
-	return pick_arb_flt(floatvalue, 8, 23)
-
-def pickdbl(floatvalue) -> FncDescription(category = "Floating point"):
-	"""Picks a 64-bit double apart (float -> dict)."""
-	return pick_arb_flt(floatvalue, 11, 52)
-
-def mkflt(sign, exponent, mantissa) -> FncDescription(category = "Floating point"):
-	"""Creates a 32-bit float value (tuple -> int)."""
-	return make_arb_flt(8, 23, sign, exponent, mantissa)
-
-def mkdbl(sign, exponent, mantissa) -> FncDescription(category = "Floating point"):
-	"""Creates a 64-bit double value (tuple -> int)."""
-	return make_arb_flt(11, 52, sign, exponent, mantissa)
 
 def bo(x, bytecnt = 0) -> FncDescription(category = "Endianness"):
 	"""\
@@ -1498,16 +1495,21 @@ def testcases():
 			assert(not isprime(s))
 
 	def float_testcases():
-		"""-"""
+		assert(encodeflt(0).combined == 0)
+		assert(encodeflt(0.02).combined == 0x3ca3d70a)
+		assert(encodeflt(1.57).combined == 0x3fc8f5c3)
+		assert(encodeflt(100.02).combined == 0x42c80a3d)
+		assert(encodeflt(-123.45).combined == 0xc2f6e666)
+
 		maxvalue = 1000000000
 		maxerr = 0
 		for exponent in range(-20, 20):
-			for i in range(2000):
+			for i in range(100):
 				mantissa = randint(0, maxvalue - 1)
 				value = (mantissa / maxvalue) * (2 ** exponent)
 				encoded = encodedbl(value)
-				decoded = decodedbl(encoded)
-				err = abs(decoded - value)
+				decoded = decodedbl(encoded.combined)
+				err = abs(decoded.value - value)
 				if err > maxerr:
 					maxerr = err
 #					print("%f -> 0x%x -> %f (err %e)" % (value, encoded, decoded, err))
