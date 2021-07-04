@@ -300,9 +300,10 @@ def decode_arb_flt(combined, exponent_bits, mantissa_bits) -> FncDescription(cat
 	exponentmask = ((1 << exponent_bits) - 1) << mantissa_bits
 	mantissamask = ((1 << mantissa_bits) - 1) << 0
 	exponentval = (combined & exponentmask) >> mantissa_bits
+
 	exponent = exponentval - (2 ** (exponent_bits - 1)) + 1
 	mantissa = combined & mantissamask
-	float_value = (1 + Fraction(mantissa / ((1 << mantissa_bits) - 1)))
+	float_value = 1 + Fraction(mantissa / ((1 << mantissa_bits)))
 	if exponent > 0:
 		float_value *= 1 << exponent
 	elif exponent < 0:
