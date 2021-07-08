@@ -387,3 +387,26 @@ mozo
 *.desktop starters: ~/.local/share/applications
 *.directory directories: ~/.local/share/desktop-directories
 Tying them together: ~/.config/menus/mate-applications.menu
+
+## Using a different ssh key for git
+export GIT_SSH_COMMAND="ssh -i ~/testkey"
+
+## Remapping keys using systemd-hwdb
+Note: Hex IDs are case sensitive (need to be uppercase). Query the systemd
+hardware database for a particular device:
+
+systemd-hwdb query evdev:input:b0003v046DpC52D
+
+Where v = USB vendor ID, p = USB product ID
+
+Finding scancodes of a particular device under an actual console:
+
+showkey --scancodes
+
+Finding scancodes under X:
+
+evtest
+
+List X input devices: xinput list
+See if we chose the right device: xinput test 12
+List properties: xinput list-props 12
