@@ -1,0 +1,5 @@
+[org/mate/desktop/session]
+idle-delay=60
+
+[org/mate/screensaver]
+mode='blank-only'
