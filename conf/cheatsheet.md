@@ -417,6 +417,47 @@ Priority of files: sorting order of combined directories:
   * /lib/udev/hwdb.d
   * /etc/udev/hwdb.d
 
+## Find modalias of device
+First, check /sys/bus/usb/devices/; directories are not named like
+bus/devicenum, so a bit of poking around is necessary. For example
+
+reliant [~]: cat /sys/bus/usb/devices/3-7/busnum 
+3
+reliant [~]: cat /sys/bus/usb/devices/3-7/devnum 
+14
+reliant [~]: cat /sys/bus/usb/devices/3-7/manufacturer 
+Logitech
+reliant [~]: cat /sys/bus/usb/devices/3-7/product 
+USB Receiver
+
+Shows that USB device 003:014 is found at /sys/bus/usb/devices/3-7. Then, see
+the endpoints, which are subdirectories within:
+
+ls /sys/bus/usb/devices/3-7/
+
+drwxr-xr-x 6 root root    0   08.07.2021 22:09:32 3-7:1.0/
+drwxr-xr-x 6 root root    0   08.07.2021 22:09:32 3-7:1.1/
+[...]
+
+Choose the right one (e.g., in this case one is mouse emulation, the other is
+keyboard emulation).
+
+reliant [~]: cat /sys/bus/usb/devices/3-7/3-7:1.0/modalias
+usb:v046DpC52Dd1701dc00dsc00dp00ic03isc01ip01in00
+
+## Find modalias of evdev
+Verify we know the correct event device:
+
+udevadm info /dev/input/event3
+
+Then:
+
+cat /sys/class/input/event3/device/modalias 
+input:b0003v046DpC52De0111-e0,1,2,3,4,14,k71,72,73,74,[...]
+
+Everything before the "e" is the modalias string (the rest is version
+information and supported keys). In this case: input:b0003v046DpC52D
+
 ## Getting Logitech R400 presenting buttons work
 cat >/etc/udev/hwdb.d/70-logitech-r400.hwdb <<EOF
 evdev:input:b0003v046DpC52D*
