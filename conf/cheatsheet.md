@@ -410,3 +410,20 @@ evtest
 List X input devices: xinput list
 See if we chose the right device: xinput test 12
 List properties: xinput list-props 12
+
+## systemd-hwdb
+Priority of files: sorting order of combined directories:
+
+  * /lib/udev/hwdb.d
+  * /etc/udev/hwdb.d
+
+## Getting Logitech R400 presenting buttons work
+cat >/etc/udev/hwdb.d/70-logitech-r400.hwdb <<EOF
+evdev:input:b0003v046DpC52D*
+ KEYBOARD_KEY_070029=f
+ KEYBOARD_KEY_07003e=f
+ KEYBOARD_KEY_070037=g
+EOF
+
+systemd-hwdb update
+udevadm trigger
