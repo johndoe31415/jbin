@@ -1,0 +1,100 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	cleanup_fonts: Remove fonts from my system which I do not use
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import re
+import os
+import subprocess
+
+font_packages = [
+	"fonts-beng-extra",
+	"fonts-deva-extra",
+	"fonts-guru-extra",
+	"fonts-kacst",
+	"fonts-kacst-one",
+	"fonts-kalapi",
+	"fonts-khmeros-core",
+	"fonts-lao",
+	"fonts-lklug-sinhala",
+	"fonts-lohit-beng-assamese",
+	"fonts-lohit-beng-bengali",
+	"fonts-lohit-deva",
+	"fonts-lohit-gujr",
+	"fonts-lohit-guru",
+	"fonts-lohit-knda",
+	"fonts-lohit-mlym",
+	"fonts-lohit-orya",
+	"fonts-lohit-taml",
+	"fonts-lohit-telu",
+	"fonts-mlym",
+	"fonts-nanum",
+	"fonts-navilu",
+	"fonts-noto-cjk",
+	"fonts-pagul",
+	"fonts-sahadeva",
+	"fonts-samyak-deva",
+	"fonts-samyak-gujr",
+	"fonts-samyak-mlym",
+	"fonts-samyak-taml",
+	"fonts-sarai",
+	"fonts-sil-abyssinica",
+	"fonts-sil-padauk",
+	"fonts-smc",
+	"fonts-smc-anjalioldlipi",
+	"fonts-smc-chilanka",
+	"fonts-smc-dyuthi",
+	"fonts-smc-gayathri",
+	"fonts-smc-karumbi",
+	"fonts-smc-keraleeyam",
+	"fonts-smc-manjari",
+	"fonts-smc-meera",
+	"fonts-smc-rachana",
+	"fonts-smc-raghumalayalamsans",
+	"fonts-smc-suruma",
+	"fonts-smc-uroob",
+	"fonts-thai-tlwg",
+	"fonts-tibetan-machine",
+	"fonts-tiresias",
+]
+cmd = [ "apt-get", "--purge", "remove" ] + font_packages
+subprocess.check_call(cmd)
+
+
+remove_filename_regexes = [
+]
+remove_filename_regexes = [ re.compile(re_text) for re_text in remove_filename_regexes ]
+
+# Noto is notorious for having hundreds of subfonts. It's painful to enumerate
+# them all, so we choose whitelisting for Noto instead of blacklisting
+noto_regex = re.compile(r"Noto[A-Z].*-.*\.ttf")
+noto_keep_regex = re.compile(r"Noto(Sans|Serif|Mono|Music)(Mono|Display|Symbols|Symbols2)?-.*\.ttf")
+
+remove_lambdas = [
+	lambda filename: any(remove_filename_regex.fullmatch(filename) for remove_filename_regex in remove_filename_regexes),
+	lambda filename: noto_regex.fullmatch(filename) and (not noto_keep_regex.fullmatch(filename)),
+]
+
+for (dirname, subdirs, files) in os.walk("/usr/share/fonts"):
+	for filename in files:
+		full_filename = dirname + "/" + filename
+		if any(remove_lambda(filename) for remove_lambda in remove_lambdas):
+			os.unlink(full_filename)
+			print(filename)
