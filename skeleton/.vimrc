@@ -185,5 +185,9 @@ autocmd FileType javascript autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType c autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType cpp autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType html autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType css autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType json autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType xml autocmd BufWritePre <buffer> :%s/\s\+$//e
+
+" Allow pasting with middle mouse button
+set clipboard=unnamedplus
