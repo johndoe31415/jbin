@@ -468,3 +468,6 @@ EOF
 
 systemd-hwdb update
 udevadm trigger
+
+## Ubuntu RFkill for regular users
+Add to group: netdev
