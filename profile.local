@@ -127,27 +127,6 @@ else
 fi
 
 
-# Export local python path
-PYTHONPATH=""
-for PYVER in 2.6 2.7 3.0 3.1 3.2 3.3 3.4 3.5 3.6 3.7 3.8 3.9; do
-	for LIBDIR in lib lib64; do
-		DIRECTORY="${HOME}/.python/${LIBDIR}/python${PYVER}/site-packages"
-		if [ -d "$DIRECTORY" ]; then
-			if [ "$PYTHONPATH" == "" ]; then
-				PYTHONPATH="${DIRECTORY}"
-			else
-				PYTHONPATH="${PYTHONPATH}:${DIRECTORY}"
-			fi
-		fi
-	done
-done
-if [ "$PYTHONPATH" != "" ]; then
-	export PYTHONPATH
-else
-	unset PYTHONPATH
-fi
-
-
 # Set tabstops at 4, but only for non-dumb terminals (breaks scp otherwise)
 if [ "$TERM" != "dumb" ]; then
 	tabs -4
