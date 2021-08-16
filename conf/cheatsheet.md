@@ -472,3 +472,8 @@ udevadm trigger
 
 ## Ubuntu RFkill for regular users
 Add to group: netdev
+
+## Enable/Disable AppArmor
+As root:
+aa-disable /usr/bin/evince
+aa-enforce /usr/bin/evince
