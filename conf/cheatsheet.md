@@ -88,6 +88,7 @@ WantedBy=default.target
   * CREATE DATABASE foodb;
   * CREATE USER foouser WITH ENCRYPTED PASSWORD 'foopass';
   * GRANT ALL PRIVILEGES ON DATABASE foodb TO foouser;
+  * Show databases: \l
   * Show tables: \dt
 
 Grant user read-only privileges
