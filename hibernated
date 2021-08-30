@@ -1,0 +1,166 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	hibernated: hibernation daemon with customizable rules
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import json
+import time
+import datetime
+import contextlib
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
+from DBusQuery import DBusQuery
+
+parser = FriendlyArgumentParser(description = "Hibernation daemon.")
+parser.add_argument("-i", "--install", action = "store_true", help = "Install systemd units and activate hibernated, then quit.")
+parser.add_argument("-c", "--config", metavar = "filename", default = "~/.config/jbin/hibernated.json", help = "Configuration file. Defaults to %(default)s.")
+parser.add_argument("--create-config", action = "store_true", help = "If it does not exist yet, create a configuration file.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+args = parser.parse_args(sys.argv[1:])
+
+class HibernateDaemon():
+	_DEFAULT_CONFIG = {
+		"iteration_delay_secs":			10,
+		"time_until_hibernation_secs":	60,
+		"inhibit_filename":				"/var/run/user/%d/hibernated.inhibt" % (os.getuid()),
+		"inhibit_processes":			[ "restic", "apt-get", "apt-cache", "apt-check", "dpkg" ],
+		"logfile_name":					"~/.config/jbin/hibernated.log",
+	}
+
+	def __init__(self, args):
+		self._args = args
+		if self._args.create_config:
+			self._create_config()
+		if self._args.install:
+			self._perform_installation()
+		self._config = dict(self._DEFAULT_CONFIG)
+		try:
+			with open(self.config_filename) as f:
+				self._config.update(json.load(f))
+		except FileNotFoundError:
+			if self._args.verbose >= 2:
+				print("No configuration file found, using default.", file = sys.stderr)
+		if self._args.verbose >= 2:
+			print("Config: %s" % (str(self._config)), file = sys.stderr)
+		self._screensaver_active_since = None
+
+	def _create_config(self):
+		if not os.path.exists(self.config_filename):
+			print("Creating configuration file: %s" % (self.config_filename), file = sys.stderr)
+			with open(self.config_filename, "w") as f:
+				json.dump(self._DEFAULT_CONFIG, f, indent = 4)
+				f.write("\n")
+		else:
+			print("Not creating configuration file because it already exists: %s" % (self.config_filename), file = sys.stderr)
+
+	def _perform_installation(self):
+		print("Installing systemd service.", file = sys.stderr)
+		dirname = os.path.expanduser("~/.local/share/systemd/user")
+		with contextlib.suppress(FileExistsError):
+			os.makedirs(dirname)
+		with open(dirname + "/hibernated.service", "w") as f:
+			print("[Unit]", file = f)
+			print("Description=Automatic hibernation service", file = f)
+			print("After=network-online.target", file = f)
+			print(file = f)
+			print("[Service]", file = f)
+			print("Type=simple", file = f)
+			print("ExecStart=%s" % (os.path.realpath(__file__)), file = f)
+			print("WorkingDirectory=%s" % (os.getenv("HOME")), file = f)
+			print(file = f)
+			print("[Install]", file = f)
+			print("WantedBy=default.target", file = f)
+		subprocess.check_call([ "systemctl", "--user", "enable", "hibernated" ])
+		subprocess.check_call([ "systemctl", "--user", "start", "hibernated" ])
+		sys.exit(0)
+
+	@staticmethod
+	def _get_running_processes():
+		output = subprocess.check_output([ "ps", "-A", "--no-headers", "-o", "%c" ]).decode()
+		return output.rstrip("\r\n").split("\n")
+
+	@property
+	def config_filename(self):
+		return os.path.realpath(os.path.expanduser(self._args.config))
+
+	@property
+	def iteration_delay_secs(self):
+		return self._config["iteration_delay_secs"]
+
+	@property
+	def time_until_hibernation_secs(self):
+		return self._config["time_until_hibernation_secs"]
+
+	@property
+	def get_inhibit_filename(self):
+		return self._config["inhibit_filename"]
+
+	@property
+	def inhibit_processes(self):
+		return self._config["inhibit_processes"]
+
+	@property
+	def logfile_name(self):
+		filename = self._config["logfile_name"]
+		return os.path.expanduser(filename)
+
+	def _log(self, msg):
+		now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+		with open(self.logfile_name, "a") as f:
+			print("%s: %s" % (now, msg), file = sys.stderr)
+			print("%s: %s" % (now, msg), file = f)
+
+	def _time_threshold_reached(self):
+		if os.path.exists(self.get_inhibit_filename):
+			return
+		running_processes = set(self._get_running_processes())
+		inhibit_processes = set(self.inhibit_processes)
+		forbidden_processes = running_processes & inhibit_processes
+		if len(forbidden_processes) > 0:
+			return
+
+		# Send machine into suspend.
+		self._screensaver_active_since = None
+		t0 = time.time()
+		DBusQuery.suspend_to_ram()
+		time.sleep(self.iteration_delay_secs)
+		t1 = time.time()
+		self._log("Woke up from suspend after %d seconds." % (t1 - t0))
+
+	def _check_run(self):
+		screensaver_active = DBusQuery.is_screensaver_active()
+		if not screensaver_active:
+			self._screensaver_active_since = None
+		else:
+			if self._screensaver_active_since is None:
+				self._screensaver_active_since = time.time()
+			screensaver_active_for = time.time() - self._screensaver_active_since
+			if screensaver_active_for >= self.time_until_hibernation_secs:
+				self._time_threshold_reached()
+
+	def run(self):
+		while True:
+			self._check_run()
+			time.sleep(self.iteration_delay_secs)
+
+hd = HibernateDaemon(args)
+hd.run()
