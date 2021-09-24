@@ -103,6 +103,9 @@ Delete user
 Change password
   * ALTER USER foouser WITH ENCRYPTED PASSWORD 'foopass';
 
+Drop all tables owned by user
+  * DROP OWNED BY foouser;
+
 ## MariaDB setup
   * CREATE DATABASE foodb;
   * CREATE USER foouser IDENTIFIED BY 'foopass';
