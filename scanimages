@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	scanimages: Scan a bunch of images and convert them/name them correctly
-#	Copyright (C) 2020-2020 Johannes Bauer
+#	Copyright (C) 2020-2021 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -25,6 +25,8 @@ import sys
 import json
 import subprocess
 import collections
+import tempfile
+import shutil
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 parser = FriendlyArgumentParser(description = "Simple scanning application.")
@@ -49,6 +51,7 @@ if args.create_config and (not os.path.exists(args.config)):
 			("mode",		"color"),
 			("offset_mm",	[ 0, 0 ]),
 			("size_mm",		[ 210, 297 ]),
+			("multipage",	False),
 		)),
 	}
 	with open(config_filename, "w") as f:
@@ -63,23 +66,38 @@ if profile not in config:
 	sys.exit(1)
 config = config[profile]
 
+file_format = os.path.splitext(config["filename"])[1].lstrip(".")
+dev_str = config.get("device", "default device")
 pages_scanned = 0
 while True:
-	input("%d pages scanned so far. Ready to scan next batch? Press ENTER to continue..." % (pages_scanned))
-	next_filename = config["filename"] % (pages_scanned + 1)
-	print(next_filename)
-	cmd = [ "scanimage" ]
-	if "device" in config:
-		cmd += [ "-d", config["device"] ]
-	cmd += [ "--resolution", str(config["resolution"]), "--mode", config["mode"] ]
-	if "offset_mm" in profile:
-		cmd += [ "-l", str(profile["offset_mm"][0]), "-t", str(profile["offset_mm"][1]) ]
-	if "size_mm" in profile:
-		cmd += [ "-x", str(profile["size_mm"][0]), "-y", str(profile["size_mm"][1]) ]
-	cmd += [ "-o", next_filename ]
-	try:
-		print("Scanning: %s" % (next_filename))
-		subprocess.check_call(cmd)
-		pages_scanned += 1
-	except subprocess.CalledProcessError as e:
-		print("Failed scan: %s" % (e))
+	multipage = config.get("multipage", False)
+	input("%d pages scanned so far. Ready to scan next %s on %s (mode %s with %d dpi)? Press ENTER to continue..." % (pages_scanned, "batch" if multipage else "page", dev_str, config["mode"], config["resolution"]))
+	with tempfile.TemporaryDirectory() as tmpdir:
+		cmd = [ "scanimage" ]
+		cmd += [ "--format=%s" % (file_format) ]
+		if "device" in config:
+			cmd += [ "-d", config["device"] ]
+		cmd += [ "--resolution", str(config["resolution"]), "--mode", config["mode"] ]
+		if "source" in config:
+			cmd += [ "--source=%s" % (config["source"]) ]
+		if "offset_mm" in config:
+			cmd += [ "-l", str(config["offset_mm"][0]), "-t", str(config["offset_mm"][1]) ]
+		if "size_mm" in config:
+			cmd += [ "-x", str(config["size_mm"][0]), "-y", str(config["size_mm"][1]) ]
+			cmd += [ "--page-width=%s" % (config["size_mm"][0]), "--page-height=%s" % (config["size_mm"][1]) ]
+		cmd += [ "--batch=%s/output%%05d.%s" % (tmpdir, file_format) ]
+
+		next_filename = config["filename"] % (pages_scanned + 1)
+		try:
+			print("Scanning: %s" % (next_filename))
+			subprocess.check_call(cmd)
+		except subprocess.CalledProcessError as e:
+			print("Failed scan: %s" % (e))
+
+		filenames = sorted(os.listdir(tmpdir))
+		print("Scanned %d page(s)." % (len(filenames)))
+		for filename in filenames:
+			src_filename = "%s/%s" % (tmpdir, filename)
+			dst_filename = config["filename"] % (pages_scanned + 1)
+			shutil.move(src_filename, dst_filename)
+			pages_scanned += 1
