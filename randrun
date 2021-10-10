@@ -1,0 +1,38 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	randrun: Run an executable with random arguments
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import subprocess
+import random
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Simple example application.")
+parser.add_argument("-n", "--arg-count", metavar = "count", type = int, default = 1, help = "Pass this number of arguments to the executable.")
+parser.add_argument("executable", type = str, help = "The executable to call")
+parser.add_argument("args", metavar = "arg", nargs = "+", help = "The sum of files out of which to randomly pick some.")
+args = parser.parse_args(sys.argv[1:])
+
+random.shuffle(args.args)
+choice = args.args[:args.arg_count]
+cmd = [ args.executable ] + choice
+print("%s" % (str(choice)))
+subprocess.check_call(cmd)
