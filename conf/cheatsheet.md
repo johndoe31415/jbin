@@ -481,3 +481,25 @@ Add to group: netdev
 As root:
 aa-disable /usr/bin/evince
 aa-enforce /usr/bin/evince
+
+## Docker
+  * docker images						# List images
+  * docker build -t myimage myimage		# Build from Dockerfile in myimage/ and tag as "myimage"
+  * docker rmi myimage					# Remove image
+  * docker run -ri myimage bash			# Run image with terminal
+  * docker ps							# Get running containers/container IDs
+  * docker ps -a						# Get all containers/container IDs (even dead ones)
+  * docker container prune				# Remove dead containers
+  * docker commit 49ba476abbb0 foo		# Commit changes to the given tag
+  * docker history foo					# Show what led to a container
+  * docker start 0cdea257064f			# Start a dead container
+  * docker attach 0cdea257064f			# Attach a terminal to that container
+  * docker network ls					# Show the network
+  * docker network inspect bridge		# Show network details
+  * Create non-NAT docker network interface:
+    docker network create -d bridge --opt com.docker.network.bridge.name=docker1 --opt com.docker.network.bridge.enable_icc=false --opt com.docker.network.bridge.enable_ip_masquerade=false --opt com.docker.network.bridge.host_binding_ipv4=172.18.0.1 --subnet=172.18.0.0/16 nonat
+  * Restrict docker container to only a single host port
+    iptables -A INPUT '!' -p tcp -i docker1 -j REJECT
+    iptables -A INPUT -p tcp -i docker1 '!' --destination-port 1234 -j REJECT
+  * Start container without outside connectivity:
+    docker run -it --network nonat --dns 0.0.0.0 --dns-search localdomain myimage
