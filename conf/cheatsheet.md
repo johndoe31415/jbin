@@ -503,3 +503,10 @@ aa-enforce /usr/bin/evince
     iptables -A INPUT -p tcp -i docker1 '!' --destination-port 1234 -j REJECT
   * Start container without outside connectivity:
     docker run -it --network nonat --dns 0.0.0.0 --dns-search localdomain myimage
+  * Start a container using an overlay
+    docker create my_image ls /
+	(returns container ID)
+    docker start 81326a713e4df606adc2f2788811fc79530c870a309842e6eb3b041b1e4e2707
+	docker inspect 81326a713e4df606adc2f2788811fc79530c870a309842e6eb3b041b1e4e2707
+	docker wait 81326a713e4df606adc2f2788811fc79530c870a309842e6eb3b041b1e4e2707
+	docker logs 81326a713e4df606adc2f2788811fc79530c870a309842e6eb3b041b1e4e2707
