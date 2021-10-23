@@ -43,17 +43,26 @@ else:
 config_filename = os.path.expanduser(args.config)
 
 if args.create_config and (not os.path.exists(args.config)):
-	config = {
-		"default": collections.OrderedDict((
-			("device",		"devicename:001"),
-			("filename",	"page_%03d.png"),
-			("resolution",	300),
-			("mode",		"color"),
-			("offset_mm",	[ 0, 0 ]),
-			("size_mm",		[ 210, 297 ]),
-			("multipage",	False),
-		)),
-	}
+	config = collections.OrderedDict((
+		("default", collections.OrderedDict((
+			("device",				"devicename:001"),
+			("filename",			"page_%03d.png"),
+			("resolution",			300),
+			("mode",				"color"),
+			("offset_mm",			[ 0, 0 ]),
+			("size_mm",				[ 210, 297 ]),
+		))),
+		("foo", collections.OrderedDict((
+			("device",				"multipager:001"),
+			("filename",			"page_%03d.png"),
+			("resolution",			150),
+			("mode",				"gray"),
+			("offset_mm",			[ 0, 0 ]),
+			("size_mm",				[ 210, 297 ]),
+			("multipage",			True),
+			("include_page_size",	True),
+		))),
+	))
 	with open(config_filename, "w") as f:
 		json.dump(config, f, indent = 4)
 		f.write("\n")
@@ -84,6 +93,7 @@ while True:
 			cmd += [ "-l", str(config["offset_mm"][0]), "-t", str(config["offset_mm"][1]) ]
 		if "size_mm" in config:
 			cmd += [ "-x", str(config["size_mm"][0]), "-y", str(config["size_mm"][1]) ]
+		if config.get("include_page_size"):
 			cmd += [ "--page-width=%s" % (config["size_mm"][0]), "--page-height=%s" % (config["size_mm"][1]) ]
 		cmd += [ "--batch=%s/output%%05d.%s" % (tmpdir, file_format) ]
 
