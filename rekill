@@ -58,6 +58,10 @@ for match in proc_re.finditer(procs):
 	if result is not None:
 		kill_list.append(match)
 
+if len(kill_list) == 0:
+	print("No processes found which match your description.")
+	sys.exit(1)
+
 if not args.force:
 	print("Killing %d processes:" % (len(kill_list)))
 	for kill_entry in kill_list:
