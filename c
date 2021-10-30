@@ -1082,6 +1082,31 @@ def nCr(n, r) -> FncDescription(category = "Stochastical functions"):
 	else:
 		return nCr(n, n - r)
 
+def Gamma(n) -> FncDescription(category = "Stochastical functions"):
+	"""\
+	Computes an approximation of the Gamma function. For integers, Gamma =
+	factorial(n - 1)."""
+	#return sqrt(2 * pi) * (n ** (n - 0.5)) * exp(-n)		# Derived from Stirling's formula
+
+	# Chao-Png Chen: A more accurate approximation for the gamma function
+	x = n - 1
+	return math.sqrt(2 * pi * x) * ((x / exp(1)) ** x) * ((1 + 1 / (12 * x ** 3 + 24/7 * x - 1/2)) ** (x ** 2 + 53/210))
+
+def inc_gamma(s, z, error = 0.0001) -> FncDescription(category = "Stochastical functions"):
+	"""\
+	Computes an approximation of the lower incomplete gamma function."""
+	gamma = 0
+	for k in range(50):
+		numerator = (z ** s) * exp(-z) * (z ** k)
+		denominator = s
+		for j in range(k):
+			denominator *= (s + 1 + j)
+		portion = numerator / denominator
+		gamma += portion
+		if portion < error:
+			break
+	return gamma
+
 def ccp_ev(n) -> FncDescription(category = "Stochastical functions"):
 	"""\
 	Gives the expected value of the coupon collector's problem: where there
@@ -1176,6 +1201,18 @@ def cdf(x, mu, sigma) -> FncDescription(category = "Stochastical functions"):
 	Returns the value of the cumulative distribution function (CDF) of the
 	Gaussian normal function at point x for given mu and sigma."""
 	return 1 / 2 * (1 + erf((x - mu) / (sigma * math.sqrt(2))))
+
+def cdfchisqr(x, k) -> FncDescription(category = "Stochastical functions"):
+	"""\
+	Returns the value of the cumulative distribution function (CDF) of the
+	Chi-squared distribution with k degrees of freedom."""
+	return 1 / Gamma(k / 2) * inc_gamma(k / 2, x / 2)
+
+def pfromchisqr(x, k) -> FncDescription(category = "Stochastical functions"):
+	"""\
+	Returns the p-value given the Chi-square score x and the degrees of freedom
+	k. k is one less than the number of categories."""
+	return 1 - cdfchisqr(x, k)
 
 def probability_for_delta(mu, delta, sigma) -> FncDescription(category = "Stochastical functions"):
 	"""\
