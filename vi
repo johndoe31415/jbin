@@ -21,14 +21,21 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 if [ "$DISPLAY" == "" ]; then
-	vim "$@"
+	exec vim "$@"
 else
 	which gvim >/dev/null 2>&1
 	havegvim="$?"
 	if [ "$havegvim" != "0" ]; then
-		vim "$@"
+		exec vim "$@"
 	else
-		# Open GVim in full screen mode
-		gvim -geometry 1000x1000 "$@" >/dev/null 2>&1
+		# Open GVim in full screen mode. Check resolution first to determine
+		# font size to use
+		SCREEN_HEIGHT=`xwininfo -root | grep Height | awk '{print $2}'`
+		if [ "$SCREEN_HEIGHT" -gt "1200" ]; then
+			# This is probably a 4K monitor
+			exec gvim -geometry 1000x1000 -c 'set guifont=Latin\ Modern\ Mono\ 18' "$@" >/dev/null 2>&1
+		else
+			exec gvim -geometry 1000x1000 "$@" >/dev/null 2>&1
+		fi
 	fi
 fi
