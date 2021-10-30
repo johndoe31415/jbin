@@ -29,8 +29,11 @@ import subprocess
 class DBusQuery():
 	@classmethod
 	def is_screensaver_active(cls):
-		output = subprocess.check_output([ "dbus-send", "--print-reply=literal", "--dest=org.mate.ScreenSaver", "/org/mate/ScreenSaver", "org.mate.ScreenSaver.GetActive" ])
-		return b"boolean true" in output
+		try:
+			output = subprocess.check_output([ "dbus-send", "--print-reply=literal", "--dest=org.mate.ScreenSaver", "/org/mate/ScreenSaver", "org.mate.ScreenSaver.GetActive" ])
+			return b"boolean true" in output
+		except subprocess.CalledProcessError:
+			return False
 
 	@classmethod
 	def lock_screensaver(cls):
@@ -56,5 +59,3 @@ if __name__ == "__main__":
 	for i in range(100):
 		print(DBusQuery.is_screensaver_active())
 		time.sleep(0.3)
-
-
