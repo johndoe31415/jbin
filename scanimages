@@ -95,7 +95,10 @@ while True:
 			cmd += [ "-x", str(config["size_mm"][0]), "-y", str(config["size_mm"][1]) ]
 		if config.get("include_page_size"):
 			cmd += [ "--page-width=%s" % (config["size_mm"][0]), "--page-height=%s" % (config["size_mm"][1]) ]
-		cmd += [ "--batch=%s/output%%05d.%s" % (tmpdir, file_format) ]
+		if config.get("multipage"):
+			cmd += [ "--batch=%s/output%%05d.%s" % (tmpdir, file_format) ]
+		else:
+			cmd += [ "-o", "%s/output.%s" % (tmpdir, file_format) ]
 
 		next_filename = config["filename"] % (pages_scanned + 1)
 		try:
