@@ -510,3 +510,9 @@ aa-enforce /usr/bin/evince
 	docker inspect 81326a713e4df606adc2f2788811fc79530c870a309842e6eb3b041b1e4e2707
 	docker wait 81326a713e4df606adc2f2788811fc79530c870a309842e6eb3b041b1e4e2707
 	docker logs 81326a713e4df606adc2f2788811fc79530c870a309842e6eb3b041b1e4e2707
+
+## Window Compositors
+Default Mate compositor: marco
+With glx: compton
+Switch at Menu -> Config -> MATE Tweak -> Windows
+
