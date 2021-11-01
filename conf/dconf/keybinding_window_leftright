@@ -1,3 +1,7 @@
 [org/mate/marco/window-keybindings]
 move-to-monitor-e='<Primary><Shift>KP_Right'
 move-to-monitor-w='<Primary><Shift>KP_Left'
+tile-to-corner-ne='<Primary><Shift>KP_9'
+tile-to-corner-nw='<Primary><Shift>KP_7'
+tile-to-corner-se='<Primary><Shift>KP_3'
+tile-to-corner-sw='<Primary><Shift>KP_1'
