@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	git-patches: Create a .tar.gz file that contains all patches on top of master
 #	Copyright (C) 2015-2018 Johannes Bauer
@@ -43,8 +43,20 @@ if [ -f "${OUTFILE}" ]; then
 	exit 1
 fi
 
+if [ "$1" != "" ]; then
+	PATCH_BASE="$1"
+else
+	BASE_BRANCH=`git show-branch -a | grep '^\*\s*+' | head -n1 | sed 's/.*\[\([^]]\+\)\].*/\1/g;'`
+	if [ "$BASE_BRANCH" == "" ]; then
+		PATCH_BASE="origin/master"
+	else
+		PATCH_BASE="origin/${BASE_BRANCH}"
+	fi
+fi
+
 mkdir "$OUTDIR"
-git format-patch -o "$OUTDIR" origin/master >/dev/null 2>&1
-git rev-parse origin/master >"${OUTDIR}/BASEREV"
+git format-patch -o "$OUTDIR" "$PATCH_BASE" >/dev/null 2>&1
+echo "$PATCH_BASE" >"${OUTDIR}/PATCHBASE"
+git rev-parse "$PATCH_BASE" >>"${OUTDIR}/PATCHBASE"
 tar cfvz "$OUTFILE" "$OUTDIR"
 rm -fr "$OUTDIR"
