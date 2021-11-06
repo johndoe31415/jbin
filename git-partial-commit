@@ -1,0 +1,43 @@
+#!/bin/bash -e
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	git-partial-commit: Commit only part of a file
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+if [ "$1" == "" ]; then
+	echo "syntax: $0 [pathspec]"
+	exit 1
+fi
+
+TMPDIR=`mktemp -d`
+TEMPFILE_OLD="${TMPDIR}/partial"
+TEMPFILE_NEW_EDIT="${TMPDIR}/do_not_edit"
+TEMPFILE_NEW="${TMPDIR}/full"
+
+PATHSPEC="$1"
+cp "$PATHSPEC" "$TEMPFILE_NEW"
+cp "$PATHSPEC" "$TEMPFILE_NEW_EDIT"
+git stash push "$PATHSPEC"
+cp "$PATHSPEC" "$TEMPFILE_OLD"
+git stash pop
+meld "$TEMPFILE_OLD" "$TEMPFILE_NEW_EDIT"
+
+cp "$TEMPFILE_OLD" "$PATHSPEC"
+git commit -m "partial commit of ${PATHSPEC}" "$PATHSPEC"
+cp "$TEMPFILE_NEW" "$PATHSPEC"
