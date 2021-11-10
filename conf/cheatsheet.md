@@ -516,3 +516,5 @@ Default Mate compositor: marco
 With glx: compton
 Switch at Menu -> Config -> MATE Tweak -> Windows
 
+## Git
+Removing deceased remote branches: git remote prune origin
