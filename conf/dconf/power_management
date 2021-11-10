@@ -1,0 +1,6 @@
+[org/mate/power-manager]
+button-lid-ac='suspend'
+button-power='interactive'
+button-suspend='suspend'
+sleep-computer-ac=0
+sleep-display-ac=900
