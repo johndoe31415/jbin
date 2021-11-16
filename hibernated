@@ -28,17 +28,54 @@ import datetime
 import contextlib
 import collections
 import subprocess
+import enum
+import argparse
+import signal
 from FriendlyArgumentParser import FriendlyArgumentParser
 from DBusQuery import DBusQuery
 
+debug_visible = False
 parser = FriendlyArgumentParser(description = "Hibernation daemon.")
-parser.add_argument("--debug-assume-screensaver", action = "store_true", help = "Assume screensaver is always active (used for debugging only).")
-parser.add_argument("--debug-no-hibernation", action = "store_true", help = "Do not actually hibernate, just print a message (used for debugging only).")
+parser.add_argument("--debug-assume-screensaver", action = "store_true", help = "Assume screensaver is always active (used for debugging only)." if debug_visible else argparse.SUPPRESS)
+parser.add_argument("--debug-no-hibernation", action = "store_true", help = "Do not actually hibernate, just print a message (used for debugging only)." if debug_visible else argparse.SUPPRESS)
+parser.add_argument("--debug-no-tasks", action = "store_true", help = "Do not actually execute tasks, just print a message (used for debugging only)." if debug_visible else argparse.SUPPRESS)
+parser.add_argument("-s", "--inhibit", action = "store_true", help = "Create the inhibit file to prevent hibernated from hibernating the system, then quit.")
 parser.add_argument("-i", "--install", action = "store_true", help = "Install systemd units and activate hibernated, then quit.")
-parser.add_argument("-c", "--config", metavar = "filename", default = "~/.config/jbin/hibernated.json", help = "Configuration file. Defaults to %(default)s.")
+parser.add_argument("-c", "--config", metavar = "filename", default = "~/.config/jbin/hibernated/configuration.json", help = "Configuration file. Defaults to %(default)s.")
 parser.add_argument("--create-config", action = "store_true", help = "If it does not exist yet, create a configuration file.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
 args = parser.parse_args(sys.argv[1:])
+
+class ScreensaverState(enum.IntEnum):
+	ScreensaverOff = 0
+	ScreensaverOn = 1
+
+class TimeLogger():
+	class Action(enum.IntEnum):
+		Initial = 0
+		Same = 1
+		Change = 2
+
+	_Event = collections.namedtuple("Event", [ "action", "old_state", "new_state", "duration" ])
+
+	def __init__(self):
+		self._state = None
+		self._time = None
+
+	def state(self, new_state):
+		now = time.time()
+
+		if (self._state is None) or (self._state != new_state):
+			if self._state is not None:
+				result = self._Event(action = self.Action.Change, old_state = self._state, new_state = new_state, duration = now - self._time)
+			else:
+				result = self._Event(action = self.Action.Initial, old_state = self._state, new_state = new_state, duration = None)
+			self._state = new_state
+			self._time = now
+		else:
+			result = self._Event(action = self.Action.Same, old_state = self._state, new_state = None, duration = now - self._time)
+		return result
+
 
 class HibernateDaemon():
 	_DEFAULT_CONFIG = collections.OrderedDict((
@@ -46,9 +83,9 @@ class HibernateDaemon():
 		("time_until_hibernation_secs",		60),
 		("inhibit_filename",				"/var/run/user/%d/hibernated.inhibit" % (os.getuid())),
 		("inhibit_processes",				[ "restic", "apt-get", "apt-cache", "apt-check", "dpkg" ]),
-		("logfile_name",					"~/.config/jbin/hibernated.log"),
-		("taskfile_name",					"~/.config/jbin/hibernated_tasks.json"),
-		("task_logfile_name",				"~/.config/jbin/hibernated_tasks.log"),
+		("logfile_name",					"~/.config/jbin/hibernated/hibernated.log"),
+		("taskfile_name",					"~/.config/jbin/hibernated/tasks.json"),
+		("task_logfile_name",				"~/.config/jbin/hibernated/tasks.log"),
 		("tasks",							[ ]),
 	))
 
@@ -67,7 +104,14 @@ class HibernateDaemon():
 				print("No configuration file found, using default.", file = sys.stderr)
 		if self._args.verbose >= 2:
 			print("Config: %s" % (str(self._config)), file = sys.stderr)
-		self._screensaver_active_since = None
+		self._itercount = 0
+		self._state = TimeLogger()
+		if self._args.inhibit:
+			self._create_inhibit_file()
+		self._running = False
+		signal.signal(signal.SIGINT, self._do_exit)
+		signal.signal(signal.SIGHUP, self._do_exit)
+		signal.signal(signal.SIGTERM, self._do_exit)
 
 	def _read_taskfile(self):
 		try:
@@ -110,6 +154,12 @@ class HibernateDaemon():
 		subprocess.check_call([ "systemctl", "--user", "start", "hibernated" ])
 		sys.exit(0)
 
+	def _create_inhibit_file(self):
+		print("Creating inhibit file: %s" % (self.inhibit_filename), file = sys.stderr)
+		with open(self.inhibit_filename, "wb") as f:
+			pass
+		sys.exit(0)
+
 	@staticmethod
 	def _get_running_processes():
 		output = subprocess.check_output([ "ps", "-A", "--no-headers", "-o", "%c" ]).decode()
@@ -132,7 +182,7 @@ class HibernateDaemon():
 		return self._config["time_until_hibernation_secs"]
 
 	@property
-	def get_inhibit_filename(self):
+	def inhibit_filename(self):
 		return self._config["inhibit_filename"]
 
 	@property
@@ -161,28 +211,27 @@ class HibernateDaemon():
 			print("%s: %s" % (now, msg), file = f)
 
 	def _perform_idle_task(self, task):
-		key = " ".join(task["cmd"])
-		now = time.time()
+		cmd = " ".join(task["cmd"])
 		taskfile = self._read_taskfile()
 
-		last_run_at = taskfile.get(key, { }).get("last_run", 0)
-		secs_since_last_run = now - last_run_at
-		run_every_secs = task["every_hours"] * 3600
-		if secs_since_last_run > run_every_secs:
+		screentime_since_last_run = taskfile.get(cmd, 0)
+		if screentime_since_last_run > task["every_secs"]:
 			now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 			with open(self.task_logfile_name, "a") as f:
-				print("%s: %s" % (now, key), file = f)
+				print("%s: %s" % (now, cmd), file = f)
 				f.flush()
-				self._log("Running command: %s" % (key))
+				self._log("Running command: %s (after %d secs, threshold %d secs)" % (cmd, screentime_since_last_run, task["every_secs"]))
 				t0 = time.time()
-				result = subprocess.run(task["cmd"], stdout = f, stderr = subprocess.STDOUT)
+				if not self._args.debug_no_tasks:
+					result = subprocess.run(task["cmd"], stdout = f, stderr = subprocess.STDOUT)
+					returncode = result.returncode
+				else:
+					returncode = -1
 				t1 = time.time()
-				self._log("Command %s finished after %d secs with returncode %d." % (key, t1 - t0, result.returncode))
-				print("Finished: %s after %d secs with returncode %d." % (key, t1 - t0, result.returncode), file = f)
+				self._log("Command %s finished after %d secs with returncode %d." % (cmd, t1 - t0, returncode))
+				print("Finished: %s after %d secs with returncode %d." % (cmd, t1 - t0, returncode), file = f)
 				print(file = f)
-			taskfile[key] = {
-				"last_run":		time.time(),
-			}
+			taskfile[cmd] = 0
 			self._write_taskfile(taskfile)
 
 	def _perform_idle_tasks(self):
@@ -206,11 +255,11 @@ class HibernateDaemon():
 		self._perform_idle_tasks()
 		if DBusQuery.is_screensaver_active() or self._args.debug_assume_screensaver:
 			# If the tasks ran very long, the user might be working again, so
-			# double check the screensaver
+			# double check the screensaver. Only hibernate if it's active.
 			self._trigger_hibernation()
 
 	def _time_threshold_reached(self):
-		if os.path.exists(self.get_inhibit_filename):
+		if os.path.exists(self.inhibit_filename):
 			return
 		running_processes = set(self._get_running_processes())
 		inhibit_processes = set(self.inhibit_processes)
@@ -219,21 +268,45 @@ class HibernateDaemon():
 			return
 		self._perform_idle_tasks_then_hibernate()
 
-	def _check_run(self):
+	def _add_screentime(self, time_secs):
+		taskfile = self._read_taskfile()
+		for task in self._config.get("tasks", [ ]):
+			cmd = " ".join(task["cmd"])
+			if cmd not in taskfile:
+				taskfile[cmd] = time_secs
+			else:
+				taskfile[cmd] += time_secs
+		self._write_taskfile(taskfile)
+
+	def _get_screensaver_event(self):
 		screensaver_active = DBusQuery.is_screensaver_active() or self._args.debug_assume_screensaver
-		if not screensaver_active:
-			self._screensaver_active_since = None
-		else:
-			if self._screensaver_active_since is None:
-				self._screensaver_active_since = time.time()
-			screensaver_active_for = time.time() - self._screensaver_active_since
-			if screensaver_active_for >= self.time_until_hibernation_secs:
-				self._time_threshold_reached()
+		screensaver_state = ScreensaverState(screensaver_active)
+		event = self._state.state(screensaver_state)
+		return event
+
+	def _check_run(self):
+		event = self._get_screensaver_event()
+		if (event.action == self._state.Action.Change) and (event.old_state == ScreensaverState.ScreensaverOff):
+			# We log the time that the screensaver was off
+			self._add_screentime(event.duration)
+		elif (event.action == self._state.Action.Same) and (event.old_state == ScreensaverState.ScreensaverOn) and (event.duration > self.time_until_hibernation_secs):
+			# Screensaver has been on for longer than the threshold
+			self._time_threshold_reached()
+
+	def _do_exit(self, signal_no, frame):
+		self._running = False
 
 	def run(self):
-		while True:
+		self._running = True
+		while self._running:
+			self._itercount += 1
 			self._check_run()
 			time.sleep(self.iteration_delay_secs)
+
+		event = self._get_screensaver_event()
+		if (event.action == self._state.Action.Same) and (event.old_state == ScreensaverState.ScreensaverOff):
+			# We're shutting down while the screensaver is off
+			self._add_screentime(event.duration)
 
 hd = HibernateDaemon(args)
 hd.run()
