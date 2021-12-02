@@ -542,3 +542,8 @@ Switch at Menu -> Config -> MATE Tweak -> Windows
 
 ## Git
 Removing deceased remote branches: git remote prune origin
+
+## Download Signal manually
+If you want Signal .deb files without needing to add them as an apt repository:
+
+curl -s https://updates.signal.org/desktop/apt/dists/xenial/main/binary-amd64/Packages | grep ^Filename | grep -v beta | awk '{print "https://updates.signal.org/desktop/apt/" $2}'
