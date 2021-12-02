@@ -111,6 +111,13 @@ Drop all tables owned by user
   * CREATE USER foouser IDENTIFIED BY 'foopass';
   * GRANT ALL privileges ON foodb.* TO foouser;
 
+Show all users
+  * SELECT user, host FROM mysql.user;
+
+Change user password
+  * ALTER USER foouser IDENTIFIED BY 'foopass';
+  * FLUSH PRIVILEGES;
+
 ## Bugfix: Ubuntu/Thunderbird shows huge emojis in subject line
   * apt-get install fonts-symbola
 
