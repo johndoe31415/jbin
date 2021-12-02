@@ -247,9 +247,9 @@ class HibernateDaemon():
 		else:
 			print("Would now suspend to RAM.")
 			time.sleep(10)
-		time.sleep(self.iteration_delay_secs)
 		t1 = time.time()
 		self._log("Woke up from suspend after %d seconds." % (t1 - t0))
+		time.sleep(self.time_until_hibernation_secs)
 
 	def _perform_idle_tasks_then_hibernate(self):
 		self._perform_idle_tasks()
