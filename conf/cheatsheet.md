@@ -359,6 +359,9 @@ GRUB_TIMEOUT_STYLE=menu
 Installation of packets:
 apt-get install libvirt-daemon libvirt-daemon-system libvirt-clients virt-viewer virtinst libosinfo-bin
 
+Installation of UI:
+apt-get intsall virt-manager
+
 Listing all current Domains:
 virsh list
 
@@ -389,6 +392,8 @@ Create new network:
 </network>
 
 virsh net-create internal.xml
+
+Using the UI: virt-manager
 
 ## Debugging Routing Decision
 ip route show to match 1.2.3.4
