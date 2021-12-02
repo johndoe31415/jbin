@@ -203,7 +203,19 @@ To build, look for directories with "main.go" file, then "go build".
 
 ## LVM2
 PV -> VG -> LV
-Grow LV: lvresize -L +50G /dev/vg0/test-disk
+Scan for LVM devices: lvmdiskscan
+Scan for PVs, VGs, LVs: pvscan / vgscan --mknodes / lvscan
+Initially creating the PV: pvcreate /dev/sdx1
+Show PVs: pvdisplay
+Then creating the VG on PV or PVs: vgcreate vg0 /dev/sdx1 /dev/sdy1
+Creating LV: lvcreate -L 20G -n mydisk vg0
+Grow LV: lvresize -L +50G /dev/vg0/mydisk
+Create snapshot with absolute size: lvcreate -s -L 2G -n mysnap /dev/vg0/mydisk
+Create snapshot with relative size: lvcreate -s -l 50%FREE -n mysnap /dev/vg0/mydisk
+Remove LV (or snapshot): lvremove /dev/vg0/mysnap
+Revert snapshot to original: lvconvert --merge /dev/vg0/mysnap
+Deactivate disk: lvchange -a n /dev/vg0/mydisk
+Activate disk: lvchange -a y /dev/vg0/mydisk
 
 ## Python PyPi
 python3 setup.py install --user		# For testing
