@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	parsemail: Parse email addresses from stdin and output them formatted
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import re
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Parse email addresses given on the command line.")
+parser.add_argument("-s", "--sort", action = "store_true", help = "Sort the addresses before printing.")
+parser.add_argument("-l", "--lower", action = "store_true", help = "Convert all addresses to lowercase.")
+args = parser.parse_args(sys.argv[1:])
+
+regex = re.compile("(?P<email>[-_.a-zA-Z0-9]+@[-_.a-zA-Z0-9]+\.[-_.a-zA-Z0-9]+)")
+
+have = set()
+have_list = [ ]
+stdin = sys.stdin.read()
+for match in regex.finditer(stdin):
+	match = match.groupdict()
+	address = match["email"]
+	if address not in have:
+		have.add(address)
+		have_list.append(address)
+
+if args.lower:
+	have_list = [ address.lower() for address in have_list ]
+if args.sort:
+	have_list.sort()
+
+print("; ".join(have_list))
