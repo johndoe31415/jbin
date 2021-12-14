@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	reduce_video_quality: Rescale video to smaller version
-#	Copyright (C) 2019-2020 Johannes Bauer
+#	Copyright (C) 2019-2021 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -63,6 +63,7 @@ parser.add_argument("-s", "--size", metavar = "geometry", type = scale_geometry,
 parser.add_argument("--start", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to start rendering. Can be of format ss or mm:ss or hh:mm:ss.")
 parser.add_argument("--end", metavar = "hh:mm:ss", type = timestamp, help = "Timestamp at which to end rendering. Can be of format ss or mm:ss or hh:mm:ss.")
 parser.add_argument("-r", "--no-auto-rotate", action = "store_true", help = "Do not auto-interpret the side data; in other words, disable smart rotation. This is needed for some broken video players (like on smart phones) that would show, e.g., a vertical video horiziontally with huge black bars on the side.")
+parser.add_argument("--broken-keyframe-workaround", action = "store_true", help = "Workaround the 'Broken file, keyframe not correctly marked' issue that can happen with OGV files from recordmydesktop.")
 parser.add_argument("-v", "--verbose", action = "store_true", help = "Show more verboity before conversion process.")
 parser.add_argument("infile", metavar = "in_filename", type = str, help = "Input video file.")
 parser.add_argument("outfile", metavar = "out_filename", type = str, help = "Reduced quality output video file.")
@@ -73,7 +74,11 @@ if args.start is not None:
 	cmd += [ "-ss", fmt_secs(args.start) ]
 if args.no_auto_rotate:
 	cmd += [ "-noautorotate" ]
+if args.broken_keyframe_workaround:
+	cmd += [ "-discard", "nokey" ]
 cmd += [ "-i", args.infile ]
+if args.broken_keyframe_workaround:
+	cmd += [ "-max_muxing_queue_size", "9999" ]
 if (args.end is not None):
 	if args.start is None:
 		duration = args.end
