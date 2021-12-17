@@ -246,8 +246,12 @@ class HibernateDaemon():
 			DBusQuery.suspend_to_ram()
 		else:
 			print("Would now suspend to RAM.")
-			time.sleep(10)
-		t1 = time.time()
+
+		# Give the system some time to adjust after waking up so that we can
+		# measure correctly. Trying to get rid of "Woke up from suspend after 0
+		# seconds" messages.
+		time.sleep(10)
+		t1 = time.time() - 10
 		self._log("Woke up from suspend after %d seconds." % (t1 - t0))
 		time.sleep(self.time_until_hibernation_secs)
 
