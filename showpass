@@ -1,0 +1,81 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	shwopass: Show a password so that it can be entered easily
+#	Copyright (C) 2021-2021 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import getpass
+import string
+import math
+password = getpass.getpass("Password: ")
+
+def getgroup(char):
+	groups = {
+		"lower":	set(string.ascii_lowercase),
+		"upper":	set(string.ascii_uppercase),
+		"digits":	set(string.digits),
+	}
+	for (name, chars) in groups.items():
+		if char in chars:
+			return name
+	return "unknown"
+
+def split_group(group):
+	char = group[0]
+	grouptype = getgroup(char)
+	max_len = {
+		"lower":	5,
+		"upper":	5,
+		"digits":	4,
+	}.get(grouptype, 2)
+
+	if len(group) <= max_len:
+		return [ group ]
+	else:
+		result = [ ]
+		grpcount = math.ceil(len(group) / max_len)
+		average = len(group) / grpcount
+		indexsum = 0
+		index = 0
+		while index < len(group):
+			indexsum += average
+			previndex = index
+			index = round(indexsum)
+			if index >= len(group):
+				index = len(group)
+			result.append(group[previndex : index])
+		return result
+
+groups = [ ]
+last_group = None
+for char in password:
+	this_group = getgroup(char)
+	if last_group != this_group:
+		# New group
+		groups.append(char)
+		last_group = this_group
+	else:
+		# Same group.
+		groups[-1] += char
+
+split_groups = [ ]
+for group in groups:
+	split_groups += split_group(group)
+
+print(" ".join(split_groups))
