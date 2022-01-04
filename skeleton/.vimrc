@@ -170,11 +170,11 @@ set foldmethod=marker
 
 set guifont=Latin\ Modern\ Mono\ 12
 
-" Previous and next on F11 and F12 (e.g., when using linter)
-imap <F11> <Esc>:cp<Enter>zz:cc<Enter>
-map <F11> :cp<Enter>zz:cc<Enter>
-imap <F12> <Esc>:cn<Enter>zz:cc<Enter>
-map <F12> :cn<Enter>zz:cc<Enter>
+" Previous and next on Ctrl-PageUp and Ctrl-PageDown (e.g., when using linter)
+imap <C-PageUp> <Esc>:cp<Enter>zz:cc<Enter>
+map <C-PageUp> :cp<Enter>zz:cc<Enter>
+imap <C-PageDown> <Esc>:cn<Enter>zz:cc<Enter>
+map <C-PageDown> :cn<Enter>zz:cc<Enter>
 
 " Update copyright year when writing Python code
 autocmd FileType python autocmd BufWritePre <buffer> let pos = winsaveview() | :%s/^#\s\+Copyright (C) \d\+-\zs\d\+\ze Johannes Bauer$/\=strftime("%Y")/e | call winrestview(pos) |unlet! pos
