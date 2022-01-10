@@ -79,18 +79,6 @@ set tabstop=4
 set encoding=utf-8
 set noexpandtab tabstop=4 shiftwidth=4
 
-imap <F1> <Esc>:A<Enter>
-map <F1> :A<Enter>
-imap <F5> <Esc>:w<Enter>:A<Enter>
-map <F5> :w<Enter>:A<Enter>
-
-imap <F8> <Esc>:w<Enter>:make check<Enter>i
-map <F8> :w<Enter>:make check<Enter>
-imap <F9> <Esc>:w<Enter>:make test<Enter>i
-map <F9> :w<Enter>:make test<Enter>
-imap <F10> <Esc>:w<Enter>:make<Enter>i
-map <F10> :w<Enter>:make<Enter>
-
 set diffopt=filler,iwhite,icase,context:10
 set linebreak
 
@@ -175,6 +163,14 @@ imap <C-PageUp> <Esc>:cp<Enter>zz:cc<Enter>
 map <C-PageUp> :cp<Enter>zz:cc<Enter>
 imap <C-PageDown> <Esc>:cn<Enter>zz:cc<Enter>
 map <C-PageDown> :cn<Enter>zz:cc<Enter>
+
+" In visual mode, add <s:nlb> and <s:nsc> tags around marked text when F7 or
+" F8 is pressed, respectively.
+vmap <C-S-b> :s/\%V.*\%V./<b>&<\/i><Enter>:noh<Enter>
+vmap <C-S-i> :s/\%V.*\%V./<i>&<\/i><Enter>:noh<Enter>
+vmap <C-S-a> :s/\%V.*\%V./<a href="">&<\/a><Enter>:noh<Enter>
+vmap <F7> :s/\%V.*\%V./<s:nlb>&<\/s:nlb><Enter>:noh<Enter>
+vmap <F8> :s/\%V.*\%V./<s:nsc>&<\/s:nsc><Enter>:noh<Enter>
 
 " Update copyright year when writing Python code
 autocmd FileType python autocmd BufWritePre <buffer> let pos = winsaveview() | :%s/^#\s\+Copyright (C) \d\+-\zs\d\+\ze Johannes Bauer$/\=strftime("%Y")/e | call winrestview(pos) |unlet! pos
