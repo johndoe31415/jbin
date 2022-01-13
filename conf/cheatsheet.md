@@ -547,3 +547,8 @@ Removing deceased remote branches: git remote prune origin
 If you want Signal .deb files without needing to add them as an apt repository:
 
 curl -s https://updates.signal.org/desktop/apt/dists/xenial/main/binary-amd64/Packages | grep ^Filename | grep -v beta | awk '{print "https://updates.signal.org/desktop/apt/" $2}'
+
+## PulseAudio
+Create pseudo-source that duplicates the left channel:
+
+pacmd load-module module-remap-source source_name=EdirolMono master="alsa_input.usb-Roland_EDIROL_UA-25-00.analog-stereo" master_channel_map=front-left,front-left channel_map=front-left,front-right source_properties='device.description="EDIROL\ UA-25\ Duplicated\ Left\ Channel\ Mono\ Source"'
