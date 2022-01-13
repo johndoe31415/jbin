@@ -357,10 +357,10 @@ GRUB_TIMEOUT_STYLE=menu
 ## KVM virutalisation
 
 Installation of packets:
-apt-get install libvirt-daemon libvirt-daemon-system libvirt-clients virt-viewer virtinst libosinfo-bin
+apt-get install libvirt-daemon libvirt-daemon-system libvirt-clients virtinst libosinfo-bin
 
 Installation of UI:
-apt-get intsall virt-manager
+apt-get install virt-manager virt-viewer
 
 Listing all current Domains:
 virsh list
