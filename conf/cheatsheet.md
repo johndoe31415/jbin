@@ -552,3 +552,7 @@ curl -s https://updates.signal.org/desktop/apt/dists/xenial/main/binary-amd64/Pa
 Create pseudo-source that duplicates the left channel:
 
 pacmd load-module module-remap-source source_name=EdirolMono master="alsa_input.usb-Roland_EDIROL_UA-25-00.analog-stereo" master_channel_map=front-left,front-left channel_map=front-left,front-right source_properties='device.description="EDIROL\ UA-25\ Duplicated\ Left\ Channel\ Mono\ Source"'
+
+## Static ARP reply
+ARP reply for an address that's not the IP of any NIC
+arp -Ds 123.123.123.123 eth0 pub
