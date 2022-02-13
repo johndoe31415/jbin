@@ -24,8 +24,8 @@ passwd the first time around). It's probably not very useful for anyone else.
   * update-initramfs
 
 
-## Disable annoying Ubuntu crash reporter
-  * apt-get --purge remove apport
+## Disable annoying Ubuntu crash reporter and other garbage
+  * apt-get --purge remove apport command-not-found
 
 
 ## NetworkManager "eth0: unmanaged"
