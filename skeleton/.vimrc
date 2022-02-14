@@ -164,14 +164,6 @@ map <C-PageUp> :cp<Enter>zz:cc<Enter>
 imap <C-PageDown> <Esc>:cn<Enter>zz:cc<Enter>
 map <C-PageDown> :cn<Enter>zz:cc<Enter>
 
-" In visual mode, add <s:nlb> and <s:nsc> tags around marked text when F7 or
-" F8 is pressed, respectively.
-vmap <C-S-b> :s/\%V.*\%V./<b>&<\/i><Enter>:noh<Enter>
-vmap <C-S-i> :s/\%V.*\%V./<i>&<\/i><Enter>:noh<Enter>
-vmap <C-S-a> :s/\%V.*\%V./<a href="">&<\/a><Enter>:noh<Enter>
-vmap <F7> :s/\%V.*\%V./<s:nlb>&<\/s:nlb><Enter>:noh<Enter>
-vmap <F8> :s/\%V.*\%V./<s:nsc>&<\/s:nsc><Enter>:noh<Enter>
-
 " Update copyright year when writing Python code
 autocmd FileType python autocmd BufWritePre <buffer> let pos = winsaveview() | :%s/^#\s\+Copyright (C) \d\+-\zs\d\+\ze Johannes Bauer$/\=strftime("%Y")/e | call winrestview(pos) |unlet! pos
 
