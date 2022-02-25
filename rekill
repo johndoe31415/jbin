@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	rekill: Kill processes that are searched for using a given regex
-#	Copyright (C) 2021-2021 Johannes Bauer
+#	Copyright (C) 2021-2022 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -72,4 +72,7 @@ if not args.force:
 		sys.exit(1)
 
 for kill_entry in kill_list:
-	os.kill(kill_entry["pid"], args.signal)
+	try:
+		os.kill(kill_entry["pid"], args.signal)
+	except PermissionError as e:
+		print("%d: %s" % (kill_entry["pid"], str(e)))
