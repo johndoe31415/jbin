@@ -173,7 +173,7 @@ resolvectl dns eth0 8.8.8.8
 joe ALL=NOPASSWD: /usr/jbin/sbin/boot_windows
 ```
 
-## Webcam
+## webcam
 Device information:
 v4l2-ctl --list-formats
 v4l2-ctl --list-formats-ext
@@ -186,6 +186,12 @@ vlc v4l2:// :live-caching=300 :v4l2-width=1280 :v4l2-height=720 :v4l2-fps=30 :v4
 
 Recording audio and video:
 ffmpeg -f alsa -i default -f video4linux2 -framerate 30 -video_size 1920x1080 -input_format mjpeg -i /dev/video0 audio_and_video.mkv
+
+Setting manual focus:
+v4l2-ctl -d /dev/video2 --set-ctrl=focus_absolute=14
+
+Streaming webcam to HTTP:
+cvlc v4l2:// :v4l2-standard= :v4l2-dev=/dev/video0 :v4l2-chroma=MJPG :v4l2-width=1920 :v4l2-height=1080 :v4l2-fps=30 :v4l2-controls-reset :live-caching=300 --sout '#standard{access=http,mux=ogg,dst=127.0.0.1:8111}'
 
 ## Go
 Get a new version (not the rancid old Ubuntu version), in particular with
