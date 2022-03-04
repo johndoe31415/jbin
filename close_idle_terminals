@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	close_idle_terminals: Kill all bash instances which have a pts but no child processes
-#	Copyright (C) 2021-2021 Johannes Bauer
+#	Copyright (C) 2021-2022 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -39,4 +39,7 @@ for line in processes.split("\n"):
 for (pts, procs) in ptses.items():
 	if len(procs) == 1:
 		pid = procs[0][0]
-		os.kill(pid, signal.SIGHUP)
+		try:
+			os.kill(pid, signal.SIGHUP)
+		except PermissionError:
+			pass
