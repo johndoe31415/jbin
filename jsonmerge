@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	jsonmerge: Merge multiple JSON files into one
+#	Copyright (C) 2019-2022 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import json
+import sys
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+class JSONMergeError(Exception): pass
+
+parser = FriendlyArgumentParser(description = "Merge multiple JOSN files.")
+parser.add_argument("-i", "--ignore-errors", action = "store_true", help = "Ignore malformed JSON files, non-existent JSON files or incompatible file types.")
+parser.add_argument("-o", "--output-file", metavar = "filename", help = "Output filename. If omitted, prints on stdout.")
+parser.add_argument("filename", nargs = "+", help = "JSON file(s) to merge.")
+args = parser.parse_args(sys.argv[1:])
+
+data = None
+for filename in args.filename:
+	try:
+		with open(filename) as f:
+			new_data = json.load(f)
+		if (not isinstance(new_data, dict)) and (not isinstance(new_data, list)):
+			raise JSONMergeError("%s: no dict or list in JSON data" % (filename))
+
+		if data is None:
+			data = new_data
+		elif isinstance(data, list) and isinstance(new_data, list):
+			data += new_data
+		elif isinstance(data, dict) and isinstance(new_data, dict):
+			data.update(new_data)
+		else:
+			raise JSONMergeError("%s: incompatible JSON data to previous files" % (filename))
+
+	except (OSError, UnicodeDecodeError, IsADirectoryError, json.decoder.JSONDecodeError, JSONMergeError):
+		if not args.ignore_errors:
+			raise
+
+if args.output_file is None:
+	print(json.dumps(data))
+else:
+	with open(args.output_file, "w") as f:
+		json.dump(data, f)
