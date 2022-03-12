@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	hibernated: hibernation daemon with customizable rules
-#	Copyright (C) 2021-2021 Johannes Bauer
+#	Copyright (C) 2021-2022 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -144,6 +144,7 @@ class HibernateDaemon():
 			print("After=network-online.target", file = f)
 			print(file = f)
 			print("[Service]", file = f)
+			print("Environment=\"SSH_AUTH_SOCK=/run/user/%d/keyring/ssh\"" % (os.getuid()), file = f)
 			print("Type=simple", file = f)
 			print("ExecStart=%s" % (os.path.realpath(__file__)), file = f)
 			print("WorkingDirectory=%s" % (os.getenv("HOME")), file = f)
