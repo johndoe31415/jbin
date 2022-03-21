@@ -1,0 +1,33 @@
+#!/bin/bash -e
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	git-rename-tag: rename a tag locally and remotely
+#	Copyright (C) 2022-2022 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+if [ "$#" != "2" ]; then
+	echo "$0 [old tag] [new tag]"
+	exit 1
+fi
+
+OLD="$1"
+NEW="$2"
+
+git tag "$NEW" "$OLD"
+git tag -d "$OLD"
+git push origin "$NEW" ":$OLD"
