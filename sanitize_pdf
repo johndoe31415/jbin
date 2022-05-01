@@ -32,7 +32,7 @@ class Sanitizer():
 	def __init__(self, args):
 		self._args = args
 
-	def do_sanitize(self, pdf_filename):
+	def _do_sanitize(self, pdf_filename):
 		if self._args.verbose >= 1:
 			print(pdf_filename)
 		uncompressed_pdf = subprocess.check_output([ "pdftk", pdf_filename, "output", "-", "uncompress" ])
@@ -42,6 +42,12 @@ class Sanitizer():
 		compressed_pdf = subprocess.check_output([ "pdftk", "-", "output", "-", "compress" ], input = uncompressed_pdf)
 		with open(pdf_filename, "wb") as f:
 			f.write(compressed_pdf)
+
+	def do_sanitize(self, pdf_filename):
+		try:
+			self._do_sanitize(pdf_filename)
+		except subprocess.CalledProcessError as e:
+			print(f"Error when processing {pdf_filename}: {str(e)}", file = sys.stderr)
 
 parser = FriendlyArgumentParser(description = "Remove annotation timestamps from PDFs.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
