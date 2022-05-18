@@ -562,3 +562,7 @@ pacmd load-module module-remap-source source_name=EdirolMono master="alsa_input.
 ## Static ARP reply
 ARP reply for an address that's not the IP of any NIC
 arp -Ds 123.123.123.123 eth0 pub
+
+## Libreoffice clear permanent text formatting
+Format -> Clear Direct Formatting
+Then search/replace regex .* by &
