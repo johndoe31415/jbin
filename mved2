@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	mved: Move files using an editor
-#	Copyright (C) 2020-2021 Johannes Bauer
+#	Copyright (C) 2020-2022 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -22,12 +22,14 @@
 
 import sys
 import os
+import re
 import enum
 import tempfile
 import stat
 import collections
 import subprocess
 import shutil
+import datetime
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 default_editor = os.getenv("EDITOR") or os.getenv("VISUAL") or "/usr/bin/vim"
@@ -109,6 +111,7 @@ class RenamingEngine():
 			shutil.move(old_filename, new_filename)
 
 class MoveEditor():
+	_VAR_REGEX = re.compile(r"\${(?P<name>[a-zA-Z]+)}")
 	_DuplicateFileError = collections.namedtuple("DuplicateFileError", [ "name", "line1", "line2" ])
 
 	def __init__(self, args):
@@ -247,6 +250,26 @@ class MoveEditor():
 
 		return True
 
+	def _apply_substitution(self, old_filename, filename):
+		statres = os.stat(old_filename)
+		def replacement(result):
+			full_match = result.group(0)
+			result = result.groupdict()
+			if result["name"] == "random":
+				return "%s" % (os.urandom(4).hex())
+			elif result["name"] == "mtime":
+				return datetime.datetime.utcfromtimestamp(statres.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+			elif result["name"] == "ctime":
+				return datetime.datetime.utcfromtimestamp(statres.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
+			elif result["name"] == "size":
+				return str(statres.st_size)
+			return full_match
+		filename = self._VAR_REGEX.sub(replacement, filename)
+		return filename
+
+	def _apply_substitutions(self, filelist):
+		return [ self._apply_substitution(old_filename, new_filename) for (old_filename, new_filename) in zip(self._source_list, filelist) ]
+
 	def run(self):
 		self._included_ftypes = self._determine_included_ftypes()
 		if self._args.verbose >= 2:
@@ -259,6 +282,8 @@ class MoveEditor():
 			while True:
 				self._edit_filelist(f.name)
 				changed_filelist = self._read_filelist(f.name)
+				if self._args.substitute:
+					changed_filelist = self._apply_substitutions(changed_filelist)
 				changed_filelist = self._delocalize_sources(changed_filelist)
 				if self._plausibilize_changed_filelist(changed_filelist):
 					break
