@@ -57,9 +57,26 @@ if version is None:
 	print("Fatal: Could not get VERSION information from module %s." % (str(module)))
 	sys.exit(1)
 
+if len(version) == 0:
+	print("Fatal: Could not get VERSION information from module %s, retrieved empty string." % (str(module)))
+	sys.exit(1)
+
+if not version[0].isdigit():
+	print("Fatal: Could not get VERSION information from module %s, does not start with a digit." % (str(module)))
+	sys.exit(1)
+
 if ("rc" in version) and (args.twine_upload):
 	print("Error: Refusing to upload release candidate '%s' to PyPi." % (version))
 	sys.exit(1)
+
+setup_file = os.path.realpath(imported_path + "/../../setup.py")
+setup_template_file = os.path.realpath(imported_path + "/../../setup_template.py")
+if os.path.isfile(setup_template_file):
+	with open(setup_template_file) as f:
+		setup_py = f.read()
+	setup_py = setup_py.replace("${PACKAGE_VERSION}", version)
+	with open("setup.py", "w") as f:
+		f.write(setup_py)
 
 with contextlib.suppress(FileNotFoundError):
 	shutil.rmtree("build")
