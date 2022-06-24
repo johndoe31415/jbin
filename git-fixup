@@ -1,0 +1,31 @@
+#!/bin/bash -e
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	git-fixup: Fixup the last git commit
+#	Copyright (C) 2022-2022 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+git log -n 1
+echo
+read -p "Fixup in preceding commit (y/n)? " yn
+if [ "$yn" == "y" ] || [ "$yn" == "Y" ]; then
+	git commit --amend --no-verify --fixup="HEAD^"
+	EDITOR="true" git rebase -i --autosquash HEAD^^
+else
+	echo "Leaving commit unchanged."
+fi
