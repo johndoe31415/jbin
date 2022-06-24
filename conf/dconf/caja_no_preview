@@ -1,0 +1,5 @@
+[org/mate/caja/preferences]
+preview-sound='never'
+show-directory-item-counts='never'
+show-icon-text='never'
+show-image-thumbnails='never'
