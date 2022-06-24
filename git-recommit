@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #	jbin - Joe's miscellaneous scripts, tools and configs
-#	git-recommit: Fixup the last git commit message and author
+#	git-recommit: Change the last git commit message and author
 #	Copyright (C) 2016-2018 Johannes Bauer
 #
 #	This file is part of jbin.
