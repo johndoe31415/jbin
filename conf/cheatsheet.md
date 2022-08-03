@@ -118,6 +118,12 @@ Change user password
   * ALTER USER foouser IDENTIFIED BY 'foopass';
   * FLUSH PRIVILEGES;
 
+Make a dump without "definer" so we can re-import without SUPER privileges
+  * mysqldump mytable | grep -vE '^/\*!50013 DEFINER=.* SQL SECURITY DEFINER \*/$' >mytable.sql
+
+Only dump the data
+  * mysqldump --single-transaction --no-create-db --no-create-info mytable | grep -vE '^/\*!50013 DEFINER=.* SQL SECURITY DEFINER \*/$' >mytabledata.sql
+
 ## Bugfix: Ubuntu/Thunderbird shows huge emojis in subject line
   * apt-get install fonts-symbola
 
