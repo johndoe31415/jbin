@@ -566,3 +566,19 @@ arp -Ds 123.123.123.123 eth0 pub
 ## Libreoffice clear permanent text formatting
 Format -> Clear Direct Formatting
 Then search/replace regex .* by &
+
+## Disable SNAP updates on bootup for 89 days
+cat >/etc/systemd/system/snap-inhibit-updates.service <<EOF
+[Unit]
+Description=Inhibit SNAP updates for the next 90 days
+After=snapd.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'snap set system refresh.hold=`/bin/date -Isec -d "today+89 day"`'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable snap-inhibit-updates.service && systemctl start snap-inhibit-updates.service
