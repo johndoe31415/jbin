@@ -138,7 +138,7 @@ alias l="/bin/ls"
 alias lsl="/bin/ls --color=always -p -l --time-style=+\"  $TIMESTYLE\""
 alias lsa="/bin/ls --color=always -p -h -l -A --time-style=+\"  $TIMESTYLE\""
 alias date="/bin/date +\"$TIMESTYLE\""
-
+alias cdl='cd "$(readlink -f "`pwd`")"'
 
 # Export locale
 DFL_LOCALE="de_DE.UTF-8"
