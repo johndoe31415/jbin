@@ -588,3 +588,6 @@ WantedBy=multi-user.target
 EOF
 
 systemctl enable snap-inhibit-updates.service && systemctl start snap-inhibit-updates.service
+
+## Mirror website with fixing links
+wget -mEkp --no-parent https://google.de
