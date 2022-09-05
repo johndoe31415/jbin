@@ -522,12 +522,13 @@ aa-enforce /usr/bin/evince
   * docker images						# List images
   * docker build -t myimage myimage		# Build from Dockerfile in myimage/ and tag as "myimage"
   * docker rmi myimage					# Remove image
-  * docker run -ri myimage bash			# Run image with terminal
+  * docker run -ti myimage bash			# Run image with terminal
   * docker ps							# Get running containers/container IDs
   * docker ps -a						# Get all containers/container IDs (even dead ones)
   * docker container prune				# Remove dead containers
   * docker commit 49ba476abbb0 foo		# Commit changes to the given tag
   * docker history foo					# Show what led to a container
+  * docker exec -ti 0cdea257064f bash	# Get a terminal within a container
   * docker start 0cdea257064f			# Start a dead container
   * docker attach 0cdea257064f			# Attach a terminal to that container
   * docker network ls					# Show the network
