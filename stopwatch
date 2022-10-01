@@ -23,27 +23,82 @@
 import time
 import datetime
 import sys
+import signal
 
-def fmt_now():
-	return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+class StopWatch():
+	def __init__(self):
+		self._t0 = time.time()
+		self._tsum = 0
 
-def fmt_secs(secs):
-	if secs < 3600:
-		return f"{secs // 60}:{secs % 60:02d}"
-	else:
-		return f"{secs // 3600}:{secs % 3600 // 60:02d}:{secs % 3600 % 60:02d}"
+	@property
+	def seconds(self):
+		if self._t0 is not None:
+			return round(time.time() - self._t0 + self._tsum)
+		else:
+			return round(self._tsum)
+
+	@property
+	def stopped(self):
+		return self._t0 is None
+
+	def _start(self):
+		self._t0 = time.time()
+
+	def _stop(self):
+		self._tsum += time.time() - self._t0
+		self._t0 = None
+
+	@staticmethod
+	def _fmt_now():
+		return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+	@staticmethod
+	def _fmt_secs(secs):
+		if secs < 3600:
+			return f"{secs // 60}:{secs % 60:02d}"
+		else:
+			return f"{secs // 3600}:{secs % 3600 // 60:02d}:{secs % 3600 % 60:02d}"
 
 
-clr = "\r\033[K"
-t0 = time.time()
-print(f"Start time: {fmt_now()}")
-try:
-	while True:
-		tdiff = round(time.time() - t0)
-		print(f"{clr}{fmt_secs(tdiff)}", end = "")
-except KeyboardInterrupt:
-	pass
-finally:
-	print()
-	tdiff = round(time.time() - t0)
-	print(f"End time: {fmt_now()} -- time taken {fmt_secs(tdiff)}")
+	@staticmethod
+	def _input_timeout(prompt, timeout_secs):
+		class TimeExpiredException(Exception): pass
+
+		def raise_exception(signum, frame):
+			raise TimeExpiredException()
+
+		try:
+			signal.signal(signal.SIGALRM, raise_exception)
+			signal.alarm(timeout_secs)
+			result = input(prompt)
+			signal.alarm(0)
+		except TimeExpiredException:
+			result = None
+		return result
+
+
+	def run(self):
+		clr = "\r\033[K"
+
+		print(f"Start time: {self._fmt_now()}")
+		try:
+			while True:
+				cmd = self._input_timeout(f"{clr}{self._fmt_secs(self.seconds)} {'stopped' if self.stopped else ''}", timeout_secs = 1)
+				if cmd == "":
+					if not self.stopped:
+						print(f"Intermediate time: {self._fmt_now()} -- time taken {self._fmt_secs(self.seconds)}")
+				elif cmd == "s":
+					if self.stopped:
+						# Starting
+						self._start()
+					else:
+						# Stopping
+						self._stop()
+
+		except KeyboardInterrupt:
+			pass
+		finally:
+			print()
+			print(f"End time: {self._fmt_now()} -- time taken {self._fmt_secs(self.seconds)}")
+
+StopWatch().run()
