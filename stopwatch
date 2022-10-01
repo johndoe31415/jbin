@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	stopwatch: Show a command-line timer
+#	Copyright (C) 2022-2022 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import time
+import datetime
+import sys
+
+def fmt_now():
+	return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def fmt_secs(secs):
+	if secs < 3600:
+		return f"{secs // 60}:{secs % 60:02d}"
+	else:
+		return f"{secs // 3600}:{secs % 3600 // 60:02d}:{secs % 3600 % 60:02d}"
+
+
+clr = "\r\033[K"
+t0 = time.time()
+print(f"Start time: {fmt_now()}")
+try:
+	while True:
+		tdiff = round(time.time() - t0)
+		print(f"{clr}{fmt_secs(tdiff)}", end = "")
+except KeyboardInterrupt:
+	pass
+finally:
+	print()
+	tdiff = round(time.time() - t0)
+	print(f"End time: {fmt_now()} -- time taken {fmt_secs(tdiff)}")
