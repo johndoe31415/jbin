@@ -88,12 +88,14 @@ class StopWatch():
 					if not self.stopped:
 						print(f"Intermediate time: {self._fmt_now()} -- time taken {self._fmt_secs(self.seconds)}")
 				elif cmd == "s":
-					if self.stopped:
-						# Starting
-						self._start()
-					else:
+					if not self.stopped:
 						# Stopping
+						print(f"Stopped at: {self._fmt_now()} -- time taken {self._fmt_secs(self.seconds)}")
 						self._stop()
+					else:
+						# Starting
+						print(f"Restarted at: {self._fmt_now()} -- time taken {self._fmt_secs(self.seconds)}")
+						self._start()
 
 		except KeyboardInterrupt:
 			pass
