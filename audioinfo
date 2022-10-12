@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	audioinfo: Analyze audio data
+#	Copyright (C) 2022-2022 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import json
+import os
+import subprocess
+import tempfile
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+class AudioAnalyzer():
+	def __init__(self, args):
+		self._args = args
+
+	def _run(self, filename):
+		shortname = os.path.basename(filename)
+		cmd = [
+			"ffmpeg",
+			"-hide_banner",
+			"-i", filename,
+			"-af", "loudnorm=print_format=json",
+			"-f", "null",
+			"-"
+		]
+		proc = subprocess.run(cmd, capture_output = True)
+		stderr = proc.stderr.decode()
+		offset = stderr.find("\n{\n")
+		json_data = json.loads(stderr[offset:])
+		lufs = float(json_data['input_i'])
+		gain = self._args.target_lufs - lufs
+		print(f"{shortname}: {lufs:.1f} LUFS, gain {gain:+.1f} dB")
+
+	def run(self):
+		for filename in self._args.filename:
+			self._run(filename)
+
+parser = FriendlyArgumentParser(description = "Analyze audio data.")
+parser.add_argument("-t", "--target-lufs", metavar = "db", type = float, default = -16, help = "Target LUFS. Defaults to %(default).1f dB.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("filename", nargs = "+", help = "Analyze this audio file")
+args = parser.parse_args(sys.argv[1:])
+
+AudioAnalyzer(args).run()
