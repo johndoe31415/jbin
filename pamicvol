@@ -1,0 +1,95 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	pamicvol: Select a specific microphone and tune in a specific volume
+#	Copyright (C) 2022-2022 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import os
+import json
+import subprocess
+import re
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+class PAMicVolController():
+	def __init__(self, args):
+		self._args = args
+		self._sources = None
+		if self._args.verbose >= 2:
+			self._dump_info()
+
+	def _dump_info(self):
+		for source in self.sources:
+			print(f"Source #{source['index']}: {source['description']}")
+
+	def _exec_parse_json(self, cmd):
+		# Workaround stupid bug in pactl that will produce illegal JSON if
+		# locale uses commas instead of decimal points
+		env = dict(os.environ)
+		env["LC_ALL"] = "C"
+		output = subprocess.check_output(cmd, env = env)
+		return json.loads(output)
+
+	@property
+	def sources(self):
+		if self._sources is None:
+			self._sources = self._exec_parse_json([ "pactl", "-f", "json", "list", "sources" ])
+		return self._sources
+
+	@property
+	def selected_source(self):
+		regex = re.compile(self._args.source_desc, flags = re.IGNORECASE)
+		found_source = [ ]
+		for source in self.sources:
+			result = regex.search(source["description"])
+			if result is not None:
+				found_source.append(source)
+		return found_source
+
+	def run(self):
+		found_source = self.selected_source
+		if len(found_source) == 0:
+			print("No sources found.", file = sys.stderr)
+			return 1
+		elif len(found_source) > 1:
+			print(f"{len(found_source)} sources found; refusing to guess in the face of ambiguity.", file = sys.stderr)
+			for source in found_source:
+				print(f"Possible match: {source['description']}")
+			return 2
+
+		source = found_source.pop()
+		subprocess.check_call([ "pactl", "set-default-source", source["name"] ])
+
+		if self._args.volume is not None:
+			volume_level = round((10 ** (-self._args.volume / 60)) * 65535)
+			subprocess.check_call([ "pactl", "set-source-volume", str(source["index"]), str(volume_level) ])
+
+		if self._args.verbose >= 3:
+			self._sources = None
+			source = self.selected_source[0]
+			print(json.dumps(source, indent = "\t", sort_keys = True))
+
+parser = FriendlyArgumentParser(description = "Switch microphone source and control gain.")
+parser.add_argument("-V", "--volume", metavar = "db", type = float, help = "Set source gain to this level in dB. Negative value is implied, i.e., if '5' is given, this means -5.5dB")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("source_desc", help = "Regex matching description of the audio source.")
+args = parser.parse_args(sys.argv[1:])
+
+pmvc = PAMicVolController(args)
+sys.exit(pmvc.run())
