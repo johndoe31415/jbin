@@ -1,0 +1,171 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	todo: Manage a TODO list
+#	Copyright (C) 2022-2022 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import sqlite3
+import os
+import contextlib
+import datetime
+import collections
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+TodoEntry = collections.namedtuple("TodoEntry", [ "db_id", "created_utc", "category", "text", "priority" ])
+class TodoValueCheckException(Exception): pass
+
+class TodoManager():
+	def __init__(self, args):
+		self._args = args
+		self._db_filename = os.path.realpath(os.path.expanduser(self._args.db_filename))
+		with contextlib.suppress(FileExistsError):
+			os.makedirs(os.path.basename(self._db_filename))
+		self._conn = None
+		self._cursor = None
+
+	def _setup_db(self):
+		with contextlib.suppress(sqlite3.OperationalError):
+			self._cursor.execute("""
+				CREATE TABLE todos (
+					id integer PRIMARY KEY,
+					created_utc timestamp NOT NULL,
+					due_utc timestamp NULL,
+					resolved_utc timestamp NULL,
+					category character varying NULL,
+					text character varying NOT NULL,
+					priority integer NOT NULL DEFAULT 0
+				);
+			""")
+
+	@staticmethod
+	def _check_text(text):
+		if text == "":
+			raise TodoValueCheckException("Todo text may not be empty")
+		return text
+
+	@staticmethod
+	def _check_category(text):
+		if text == "":
+			return None
+		else:
+			return text
+
+	@staticmethod
+	def _check_priority(text):
+		if text == "":
+			return 0
+		try:
+			return int(text)
+		except ValueError:
+			raise TodoValueCheckException("Todo priority must be empty or an integer")
+
+	def _check_id(self, text):
+		if text == "":
+			return None
+		try:
+			internal_id = int(text)
+		except ValueError:
+			raise TodoValueCheckException("Todo ID must be an integer")
+		if internal_id not in self._id_map:
+			raise TodoValueCheckException(f"No such todo ID: {internal_id}")
+		db_id = self._id_map[internal_id]
+		del self._id_map[internal_id]
+		return db_id
+
+	def _input_qry(self, prompt, check_fnc = None):
+		while True:
+			value = input(prompt)
+			if check_fnc is None:
+				return value
+			try:
+				checked_value = check_fnc(value)
+				return checked_value
+			except TodoValueCheckException as e:
+				print(f"Error with input: {str(e)}")
+
+	def _new_todo(self):
+		created_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+		text = self._input_qry("Text    : ", self._check_text)
+		if self._args.add_todo_with_extra_data:
+			category = self._input_qry("Category: ", self._check_category)
+			priority = self._input_qry("Priority: ", self._check_priority)
+		else:
+			category = None
+			priority = 0
+		self._cursor.execute("INSERT INTO todos (created_utc, category, text, priority) VALUES (?, ?, ?, ?);", (created_utc, category, text, priority))
+
+	def _print_todos(self):
+		self._cursor.execute("SELECT id, created_utc, category, text, priority FROM todos WHERE resolved_utc IS NULL ORDER BY priority DESC, created_utc ASC;")
+		entries = collections.defaultdict(list)
+		for (db_id, created_utc, category, text, priority) in self._cursor.fetchall():
+			entry = TodoEntry(db_id = db_id, created_utc = created_utc, category = category, text = text, priority = priority)
+			entries[category or ""].append(entry)
+
+		self._id_map = { }
+		for (category, entries) in sorted(entries.items()):
+			if (len(entries) > 0) and (len(category) > 0):
+				print(f" >> {category} <<")
+			for entry in entries:
+				internal_id = len(self._id_map) + 1
+				self._id_map[internal_id] = entry.db_id
+				if not self._args.delete_todo:
+					print(f"    {entry.text}")
+				else:
+					print(f"  {internal_id:2d}  {entry.text}")
+			print()
+
+	def _delete_todo(self):
+		resolved_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+		while True:
+			db_id = self._input_qry("ID to delete: ", self._check_id)
+			if db_id is None:
+				return
+			self._cursor.execute("UPDATE todos SET resolved_utc = ? WHERE id = ?;", (resolved_utc, db_id))
+
+	def _run(self):
+		self._setup_db()
+		self._print_todos()
+		if self._args.add_todo or self._args.add_todo_with_extra_data:
+			self._new_todo()
+		if self._args.delete_todo:
+			self._delete_todo()
+
+	def run(self):
+		self._conn = sqlite3.connect(self._db_filename)
+		try:
+			self._cursor = self._conn.cursor()
+			self._run()
+		finally:
+			self._conn.commit()
+			self._cursor.close()
+			self._conn.close()
+
+parser = FriendlyArgumentParser(description = "Manage TODOs.")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-a", "--add-todo", action = "store_true", help = "Add a new TODO.")
+group.add_argument("-A", "--add-todo-with-extra-data", action = "store_true", help = "Add a new TODO with priority and category.")
+parser.add_argument("-d", "--delete-todo", action = "store_true", help = "Delete TODOs.")
+parser.add_argument("-D", "--db-filename", metavar = "filename", default = "~/.config/jbin/todos.sqlite3", help = "Specifies database file to use. Defaults to %(default)s.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+args = parser.parse_args(sys.argv[1:])
+
+tdm = TodoManager(args)
+tdm.run()
+
