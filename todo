@@ -48,6 +48,7 @@ class TodoManager():
 					created_utc timestamp NOT NULL,
 					due_utc timestamp NULL,
 					resolved_utc timestamp NULL,
+					deferred_until_utc timestamp NULL,
 					category character varying NULL,
 					text character varying NOT NULL,
 					priority integer NOT NULL DEFAULT 0
@@ -112,7 +113,13 @@ class TodoManager():
 		self._cursor.execute("INSERT INTO todos (created_utc, category, text, priority) VALUES (?, ?, ?, ?);", (created_utc, category, text, priority))
 
 	def _print_todos(self):
-		self._cursor.execute("SELECT id, created_utc, category, text, priority FROM todos WHERE resolved_utc IS NULL ORDER BY priority DESC, created_utc ASC;")
+		now_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+		self._cursor.execute("""
+				SELECT id, created_utc, category, text, priority
+					FROM todos
+					WHERE (resolved_utc IS NULL) AND ((deferred_until_utc IS NULL) OR (deferred_until_utc < ?))
+					ORDER BY priority DESC, created_utc ASC;
+		""", (now_utc, ))
 		entries = collections.defaultdict(list)
 		for (db_id, created_utc, category, text, priority) in self._cursor.fetchall():
 			entry = TodoEntry(db_id = db_id, created_utc = created_utc, category = category, text = text, priority = priority)
@@ -125,10 +132,10 @@ class TodoManager():
 			for entry in entries:
 				internal_id = len(self._id_map) + 1
 				self._id_map[internal_id] = entry.db_id
-				if not self._args.delete_todo:
-					print(f"    {entry.text}")
-				else:
+				if self._args.delete_todo or self._args.defer_todo:
 					print(f"  {internal_id:2d}  {entry.text}")
+				else:
+					print(f"    {entry.text}")
 			print()
 
 	def _delete_todo(self):
@@ -139,6 +146,15 @@ class TodoManager():
 				return
 			self._cursor.execute("UPDATE todos SET resolved_utc = ? WHERE id = ?;", (resolved_utc, db_id))
 
+	def _defer_todo(self):
+		deferred_until_utc_ts = (datetime.datetime.utcnow() + datetime.timedelta(0, 3600 * self._args.defer_todo))
+		deferred_until_utc = deferred_until_utc_ts.strftime("%Y-%m-%dT%H:%M:%SZ")
+		while True:
+			db_id = self._input_qry(f"ID to defer for {self._args.defer_todo} hours: ", self._check_id)
+			if db_id is None:
+				return
+			self._cursor.execute("UPDATE todos SET deferred_until_utc = ? WHERE id = ?;", (deferred_until_utc, db_id))
+
 	def _run(self):
 		self._setup_db()
 		self._print_todos()
@@ -146,6 +162,8 @@ class TodoManager():
 			self._new_todo()
 		if self._args.delete_todo:
 			self._delete_todo()
+		if self._args.defer_todo:
+			self._defer_todo()
 
 	def run(self):
 		self._conn = sqlite3.connect(self._db_filename)
@@ -161,8 +179,9 @@ parser = FriendlyArgumentParser(description = "Manage TODOs.")
 group = parser.add_mutually_exclusive_group()
 group.add_argument("-a", "--add-todo", action = "store_true", help = "Add a new TODO.")
 group.add_argument("-A", "--add-todo-with-extra-data", action = "store_true", help = "Add a new TODO with priority and category.")
-parser.add_argument("-d", "--delete-todo", action = "store_true", help = "Delete TODOs.")
-parser.add_argument("-D", "--db-filename", metavar = "filename", default = "~/.config/jbin/todos.sqlite3", help = "Specifies database file to use. Defaults to %(default)s.")
+group.add_argument("-d", "--delete-todo", action = "store_true", help = "Delete TODOs.")
+group.add_argument("-D", "--defer-todo", metavar = "hours", type = int, help = "Defer TODOs by the specified amount of hours.")
+parser.add_argument("-f", "--db-filename", metavar = "filename", default = "~/.config/jbin/todos.sqlite3", help = "Specifies database file to use. Defaults to %(default)s.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
 args = parser.parse_args(sys.argv[1:])
 
