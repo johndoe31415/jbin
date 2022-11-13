@@ -40,6 +40,7 @@ definitions = [
 			("impish", "2021.10"),
 			("jammy", "2022.04"),
 			("kinetic", "2022.10"),
+			("lunar", "2023.04"),
 		],
 		"mirrors": [
 			"http://ftp.halifax.rwth-aachen.de/ubuntu/",
@@ -71,6 +72,7 @@ definitions = [
 			("bullseye", "8'2021"),
 #			("bookworm", "N/A"),
 #			("trixie", "N/A"),
+#			("forky", "N/A"),
 		],
 		"mirrors": [
 			"http://ftp.de.debian.org/debian/",
