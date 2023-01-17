@@ -221,6 +221,7 @@ Initially creating the PV: pvcreate /dev/sdx1
 Show PVs: pvdisplay
 Then creating the VG on PV or PVs: vgcreate vg0 /dev/sdx1 /dev/sdy1
 Creating LV: lvcreate -L 20G -n mydisk vg0
+Creating LV with striping: lvcreate -L 100%FREE -n stripeddisk -i2 vg0
 Grow LV: lvresize -L +50G /dev/vg0/mydisk
 Create snapshot with absolute size: lvcreate -s -L 2G -n mysnap /dev/vg0/mydisk
 Create snapshot with relative size: lvcreate -s -l 50%FREE -n mysnap /dev/vg0/mydisk
