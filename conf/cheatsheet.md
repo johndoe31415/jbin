@@ -290,6 +290,13 @@ Example property: 0x60 ("Input Source")
 Show particular VCP property: ddcutil vcpinfo 60 -v
 Set a particular input source (set display 2 to DisplayPort-1): ddcutil setvcp -d 2 60 0x0f
 
+Alternative example property: 0x10 ("Brightness")
+Set brightness to 15 on left and right monitors:
+ddcutil setvcp 10 15 -d 1 && ddcutil setvcp 10 15 -d 2
+
+Set brightness to 80 on left and right monitors:
+ddcutil setvcp 10 80 -d 1 && ddcutil setvcp 10 80 -d 2
+
 Disable monitor hotplug events in Mate: gsettings set org.mate.SettingsDaemon.plugins.xrandr active false
 
 ## HBCI PIN/TAN configuration Comdirect
