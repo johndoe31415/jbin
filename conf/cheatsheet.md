@@ -593,3 +593,8 @@ systemctl enable snap-inhibit-updates.service && systemctl start snap-inhibit-up
 
 ## Mirror website with fixing links
 wget -mEkp --no-parent https://google.de
+
+## LuaLaTeX
+List all fonts: luaotfload-tool --list='*'
+Regenerate font list: luaotfload-tool --update
+
