@@ -598,3 +598,7 @@ wget -mEkp --no-parent https://google.de
 List all fonts: luaotfload-tool --list='*'
 Regenerate font list: luaotfload-tool --update
 
+## repo
+repo forall -c "git clean -dfx"
+repo forall -c "git reset hard"
+
