@@ -609,3 +609,24 @@ Regenerate font list: luaotfload-tool --update
 repo forall -c "git clean -dfx"
 repo forall -c "git reset hard"
 
+## OP-TEE
+repo init -u https://github.com/OP-TEE/manifest.git
+repo sync
+repo forall -c "git checkout 3.16.0"
+cd build
+make toolchains
+make -j32 QEMU_VIRTFS_ENABLE=y QEMU_USERNET_ENABLE=y run
+
+## Kernel keyring
+Add specific key: keyctl add user mykey 7bdbf8b4feb337afae5d7848322a80a0 @u
+Show keyring: keyctl show @u
+Add trusted key: keyctl add trusted kek "new 32" @u
+
+# PKCS#11
+Initialize token: pkcs11-tool --init-token --label testtoken --so-pin 1234567890
+Initialize user PIN: pkcs11-tool --label testtoken --login --so-pin 1234567890 --init-pin --pin 12345
+List slots: pkcs11-tool -L
+List mechanisms: pkcs11-tool -M
+Generate symmetric key: pkcs11-tool -l --pin 12345 --keygen --key-type AES:16 --label symm_key
+Generate asymmetric keypair: pkcs11-tool -l --pin 12345 --keypairgen --key-type EC:prime256v1 --label ec_key
+Generate asymmetric keypair: pkcs11-tool -l --pin 12345 --keypairgen --key-type rsa:2048 --label rsa_key
