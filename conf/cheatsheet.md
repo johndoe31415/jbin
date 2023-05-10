@@ -617,6 +617,9 @@ cd build
 make toolchains
 make -j32 QEMU_VIRTFS_ENABLE=y QEMU_USERNET_ENABLE=y run
 
+
+repo init -u https://github.com/OP-TEE/manifest.git -b 3.16.0
+
 ## Kernel keyring
 Add specific key: keyctl add user mykey 7bdbf8b4feb337afae5d7848322a80a0 @u
 Show keyring: keyctl show @u
@@ -630,3 +633,10 @@ List mechanisms: pkcs11-tool -M
 Generate symmetric key: pkcs11-tool -l --pin 12345 --keygen --key-type AES:16 --label symm_key
 Generate asymmetric keypair: pkcs11-tool -l --pin 12345 --keypairgen --key-type EC:prime256v1 --label ec_key
 Generate asymmetric keypair: pkcs11-tool -l --pin 12345 --keypairgen --key-type rsa:2048 --label rsa_key
+
+# DBus
+busctl list --user
+busctl tree --user
+busctl monitor --user
+GUI: d-feet
+dbus-send --print-reply --dest=org.cinnamon.Muffin.IdleMonitor /org/cinnamon/Muffin/IdleMonitor/Core org.cinnamon.Muffin.IdleMonitor.GetIdletime
