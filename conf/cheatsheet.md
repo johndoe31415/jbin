@@ -640,3 +640,6 @@ busctl tree --user
 busctl monitor --user
 GUI: d-feet
 dbus-send --print-reply --dest=org.cinnamon.Muffin.IdleMonitor /org/cinnamon/Muffin/IdleMonitor/Core org.cinnamon.Muffin.IdleMonitor.GetIdletime
+
+# Get WPA2-Enterprise X.509 certificates
+wpa_cli
