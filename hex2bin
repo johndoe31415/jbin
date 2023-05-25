@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
-#	hex2bin: Convert hexadecimal stdin to binary
-#	Copyright (C) 2018-2018 Johannes Bauer
+#	hex2bin: Convert a hex stream of bytes to a binary file
+#	Copyright (C) 2023-2023 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -21,11 +21,33 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 import sys
+import re
+from FriendlyArgumentParser import FriendlyArgumentParser
 
-hexdata = [ ]
-for line in sys.stdin:
-	line = line.rstrip("\r\n")
-	hexdata.append(line)
-hexdata = "".join(hexdata).replace(" ", "").replace("\t", "")
-data = bytes.fromhex(hexdata)
-sys.stdout.buffer.write(data)
+parser = FriendlyArgumentParser()
+parser.add_argument("-i", "--input-filename", metavar = "filename", help = "Input filename to read from. Defaults to stdin.")
+parser.add_argument("-o", "--output-filename", metavar = "filename", help = "Output filename to write to. Defaults to stdout.")
+parser.add_argument("-p", "--permissive", action = "store_true", help = "Do not just filter whitespace, but all non-hex characters from input.")
+args = parser.parse_args(sys.argv[1:])
+
+if args.input_filename is not None:
+	with open(args.input_filename) as f:
+		input_text = f.read()
+else:
+	input_text = sys.stdin.read()
+
+if not args.permissive:
+	input_text = re.sub("\s", "", input_text)
+else:
+	input_text = re.sub("[^a-fA-F0-9]", "", input_text)
+
+if (len(input_text) % 2) != 0:
+	raise ValueError(f"Length of input data not divisible by two (was {len(input_text)} characters).")
+
+byte_data = bytes.fromhex(input_text)
+
+if args.output_filename is not None:
+	with open(args.output_filename, "wb") as f:
+		f.write(byte_data)
+else:
+	sys.stdout.buffer.write(byte_data)
