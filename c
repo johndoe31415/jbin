@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	c: General-purpose scientific/cryptographic calculator
-#	Copyright (C) 2009-2021 Johannes Bauer
+#	Copyright (C) 2009-2023 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -33,6 +33,7 @@ import collections
 import base64
 import itertools
 import string
+import bisect
 from random import randint, randrange
 from math import sqrt, sin, cos, tan, atan2, pi, e, exp, factorial, log, log10, ceil, floor
 from fractions import Fraction
@@ -1428,6 +1429,30 @@ def unify(value, significant_digits = 3) -> FncDescription(category = "Misc"):
 			return fmtstr % (value / 10 ** (power), prefix)
 
 	return "%.*e %s" % (significant_digits - 1, value / (10 ** known_powers[-1][0]), known_powers[-1][1])
+
+def unifybi(value, significant_digits = 4) -> FncDescription(category = "Misc"):
+	"""Converts a value to a unified string with binary prefixes."""
+	if value < 0:
+		return "-" + unifybi(-value)
+	known_powers = [
+		(2 ** 10, "ki"),
+		(2 ** 20, "Mi"),
+		(2 ** 30, "Gi"),
+		(2 ** 40, "Ti"),
+		(2 ** 50, "Pi"),
+		(2 ** 60, "Ei"),
+	]
+	known_power_values = [ known_power[0] for known_power in known_powers ]
+	index = bisect.bisect(known_power_values, value) - 1
+
+	if index == -1:
+		divisor = 1
+		unit = "B"
+	else:
+		(divisor, unit) = known_powers[index]
+
+	unified_value = value / divisor
+	return f"{unified_value:.{significant_digits}g} {unit}"
 
 def linint(x1, y1, x2, y2, x) -> FncDescription(category = "Misc"):
 	"""\
