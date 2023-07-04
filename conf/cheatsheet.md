@@ -625,7 +625,7 @@ Add specific key: keyctl add user mykey 7bdbf8b4feb337afae5d7848322a80a0 @u
 Show keyring: keyctl show @u
 Add trusted key: keyctl add trusted kek "new 32" @u
 
-# PKCS#11
+## PKCS#11
 Initialize token: pkcs11-tool --init-token --label testtoken --so-pin 1234567890
 Initialize user PIN: pkcs11-tool --label testtoken --login --so-pin 1234567890 --init-pin --pin 12345
 List slots: pkcs11-tool -L
@@ -634,7 +634,7 @@ Generate symmetric key: pkcs11-tool -l --pin 12345 --keygen --key-type AES:16 --
 Generate asymmetric keypair: pkcs11-tool -l --pin 12345 --keypairgen --key-type EC:prime256v1 --label ec_key
 Generate asymmetric keypair: pkcs11-tool -l --pin 12345 --keypairgen --key-type rsa:2048 --label rsa_key
 
-# DBus
+## DBus
 busctl list --user
 busctl tree --user
 busctl monitor --user
@@ -643,3 +643,14 @@ dbus-send --print-reply --dest=org.cinnamon.Muffin.IdleMonitor /org/cinnamon/Muf
 
 # Get WPA2-Enterprise X.509 certificates
 wpa_cli
+
+## Bochs
+./configure --enable-x86-64 --enable-smp --enable-debugger --enable-x86-debugger --enable-usb --with-wx
+Show GDT: info gdt
+Show paging info: info tab
+CPU mode switch breakpoint: modebp
+Dump linear address: x/32b 0x7c00
+Dump physical address: xp/32b 0x7c00
+
+## Python editable package
+pip install -e .
