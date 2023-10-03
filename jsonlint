@@ -41,7 +41,7 @@ else:
 data = json.loads(data, object_pairs_hook = collections.OrderedDict)
 
 if args.output_format == "pretty":
-	text = json.dumps(data, indent = 4 if (not args.use_spaces) else "\t", sort_keys = args.sort_keys == "alphabetical", ensure_ascii = not args.allow_unicode)
+	text = json.dumps(data, indent = 4 if args.use_spaces else "\t", sort_keys = args.sort_keys == "alphabetical", ensure_ascii = not args.allow_unicode)
 	print(text)
 elif args.output_format == "oneline":
 	print(json.dumps(data, sort_keys = args.sort_keys == "alphabetical"), ensure_ascii = not args.allow_unicode)
