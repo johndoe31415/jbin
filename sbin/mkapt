@@ -41,7 +41,7 @@ definitions = [
 			("jammy", "2022.04"),
 			("kinetic", "2022.10"),
 			("lunar", "2023.04"),
-#			("mantic", "2023.10"),
+			("mantic", "2023.10"),
 		],
 		"mirrors": [
 			"http://ftp.halifax.rwth-aachen.de/ubuntu/",
