@@ -235,6 +235,9 @@ python3 setup.py install --user		# For testing
 python3 setup.py sdist
 twine upload dist/foobar-1.2.3.tar.gz
 
+## Python venv
+python3 -m venv "${HOME}/.local"
+
 ## Mounting CIFS/Samba share
 mount.cifs -o user=guest,pass=guest,uid=1000,gid=1000,dir_mode=0755,file_mode=0644 //sz/Users dos
 
@@ -654,3 +657,7 @@ Dump physical address: xp/32b 0x7c00
 
 ## Python editable package
 pip install -e .
+
+## Evince zoom level
+Need to increase page cache size, e.g. to 4 GiB
+gsettings set org.gnome.Evince page-cache-size 4096

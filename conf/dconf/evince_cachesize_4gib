@@ -1,0 +1,2 @@
+[org/gnome/evince]
+page-cache-size=uint32 4096
