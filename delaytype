@@ -25,5 +25,16 @@ if [ "$1" == "" ]; then
 else
 	DELAY_SECS="$1"
 fi
+if [ "$2" == "" ]; then
+	TEXT=`xclip -o`
+	if [ "$TEXT" == "" ]; then
+		echo "Refusing to type empty clipboard."
+		exit 1
+	fi
+else
+	TEXT="$2"
+fi
+
+echo "Typing \"${TEXT}\" in ${DELAY_SECS} seconds..."
 sleep "$DELAY_SECS"
-xdotool type `xclip -o`
+xdotool type "$TEXT"
