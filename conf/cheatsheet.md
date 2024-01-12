@@ -661,3 +661,16 @@ pip install -e .
 ## Evince zoom level
 Need to increase page cache size, e.g. to 4 GiB
 gsettings set org.gnome.Evince page-cache-size 4096
+
+## KDE get all shortcut UUIDs
+qdbus org.kde.kglobalaccel /component/khotkeys shortcutNames
+
+## KDE find correct shortcut UUID
+less ~/.config/khotkeysrc
+
+## KDE execute shortcut
+qdbus org.kde.kglobalaccel /component/khotkeys invokeShortcut {13c7148c-2439-41fc-9d48-6a5839ee4205}
+
+## KDE execute shortcut on Meta (Super_L)
+kwriteconfig5 --file ~/.config/kwinrc --group ModifierOnlyShortcuts --key Meta "org.kde.kglobalaccel,/component/khotkeys,org.kde.kglobalaccel.Component,invokeShortcut,{13c7148c-2439-41fc-9d48-6a5839ee4205}"
+qdbus org.kde.KWin /KWin reconfigure
