@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	mved: Move files using an editor
-#	Copyright (C) 2020-2022 Johannes Bauer
+#	Copyright (C) 2020-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -36,7 +36,7 @@ default_editor = os.getenv("EDITOR") or os.getenv("VISUAL") or "/usr/bin/vim"
 
 parser = FriendlyArgumentParser(description = "Move or rename files interactively using an editor.")
 parser.add_argument("-e", "--editor", metavar = "filename", default = default_editor, help = "Specifies editor to use. Defaults to %(default)s.")
-parser.add_argument("-f", "--files", action = "store_true", help = "Include files in the enumeration.")
+parser.add_argument("--no-files", action = "store_true", help = "Do not include files in the enumeration.")
 parser.add_argument("-d", "--directories", action = "store_true", help = "Include directories in the enumeration.")
 parser.add_argument("-s", "--symlinks", action = "store_true", help = "Include symlinks in the enumeration.")
 parser.add_argument("-x", "--special", action = "store_true", help = "Include special files (e.g., block devices, character devices) in the enumeration.")
@@ -70,7 +70,7 @@ class RenamingEngine():
 			if not os.path.exists(tempfile_name):
 				return tempfile_name
 		else:
-			raise Exception("Could not find temporary filename replacement for '%s', giving up." % (filename))
+			raise Exception(f"Could not find temporary filename replacement for '{filename}', giving up.")
 
 	def _determine_order_of_operations(self):
 		order = [ ]
@@ -131,17 +131,9 @@ class MoveEditor():
 		else:
 			return FileType.Other
 
-		print(stat)
-
 	def _enumerate_source(self, filename):
-		fullname = os.path.realpath(filename)
-		if fullname in self._source_set:
-			return
-		if fullname == "/":
-			return
-
 		try:
-			statres = os.stat(fullname)
+			statres = os.lstat(filename)
 		except (FileNotFoundError, PermissionError) as e:
 			if self._args.verbose >= 1:
 				print("Ignoring %s: %s" % (filename, e))
@@ -149,14 +141,14 @@ class MoveEditor():
 
 		ftype = self._get_ftype(statres)
 		if ftype in self._included_ftypes:
-			self._source_set.add(fullname)
-			self._source_list.append(fullname)
+			self._source_set.add(filename)
+			self._source_list.append(filename)
 
 		if (ftype == FileType.Directory) and self._args.recurse:
 			try:
-				for inner_filename in sorted(os.listdir(fullname)):
+				for inner_filename in sorted(os.listdir(filename)):
 					if self._args.hidden or (not inner_filename.startswith(".")):
-						self._enumerate_source(fullname + "/" + inner_filename)
+						self._enumerate_source(filename + "/" + inner_filename)
 			except PermissionError as e:
 				if self._args.verbose >= 1:
 					print("Not recursing into %s: %s" % (filename, e))
@@ -167,7 +159,7 @@ class MoveEditor():
 
 	def _determine_included_ftypes(self):
 		ftypes = set()
-		if self._args.files:
+		if not self._args.no_files:
 			ftypes.add(FileType.File)
 		if self._args.directories:
 			ftypes.add(FileType.Directory)
@@ -176,7 +168,7 @@ class MoveEditor():
 		if self._args.special:
 			ftypes.add(FileType.Other)
 		if len(ftypes) == 0:
-			ftypes = set(FileType)
+			raise Exception("Nothing to enumerate, all devices/filetypes excluded.")
 		return ftypes
 
 	def _localize_sources(self):
@@ -234,7 +226,7 @@ class MoveEditor():
 
 	def _plausibilize_changed_filelist(self, changed_filelist):
 		if len(changed_filelist) != len(self._source_list):
-			if self._confirm("Original list had %d entries; changed list has %d. Retry editing (y/n)? " % (len(self._source_list), len(changed_filelist))):
+			if self._confirm(f"Original list had {len(self._source_list)} entries; changed list has {len(changed_filelist)}. Retry editing (y/n)? "):
 				return False
 			else:
 				print("Aborting after length mismatch in edited list.", file = sys.stderr)
@@ -251,7 +243,7 @@ class MoveEditor():
 		return True
 
 	def _apply_substitution(self, old_filename, filename):
-		statres = os.stat(old_filename)
+		statres = os.lstat(old_filename)
 		def replacement(result):
 			full_match = result.group(0)
 			result = result.groupdict()
