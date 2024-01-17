@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	reenumerate: Reenumerate a list of names
+#	Copyright (C) 2024-2024 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import re
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Reenumerate prefixes of a list of names.")
+parser.add_argument("-l", "--length", type = int, default = 3, help = "Number of characters for enumeration, defaults to %(default)d.")
+parser.add_argument("-s", "--start", type = int, default = 10, help = "First value to enumerate. Defaults to %(default)d.")
+parser.add_argument("-t", "--step", type = int, default = 10, help = "Enumeration step to take. Defaults to %(default)d.")
+args = parser.parse_args(sys.argv[1:])
+
+regex = re.compile("(?P<prefix>\d+_)(?P<filename>.*)")
+value = args.start
+for line in sys.stdin:
+	line = line.rstrip("\r\n")
+	rematch = regex.fullmatch(line)
+	if rematch is None:
+		print(f"{value:0{args.length}d}_{line}")
+	else:
+		print(f"{value:0{args.length}d}_{rematch.groupdict()['filename']}")
+	value += args.step
