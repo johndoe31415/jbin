@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	stopwatch: Show a command-line timer
-#	Copyright (C) 2022-2022 Johannes Bauer
+#	Copyright (C) 2022-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -24,11 +24,20 @@ import time
 import datetime
 import sys
 import signal
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
 
 class StopWatch():
-	def __init__(self):
+	def __init__(self, args):
+		self._args = args
 		self._t0 = time.time()
 		self._tsum = 0
+		self._notifications = [ ]
+		for value in self._args.sound:
+			if not self._args.notification_secs:
+				value *= 60
+			self._notifications.append(value)
+		self._notifications.sort()
 
 	@property
 	def seconds(self):
@@ -76,6 +85,19 @@ class StopWatch():
 			result = None
 		return result
 
+	def _play_notification(self):
+		subprocess.Popen([ "mpv", self._args.notification_sound ], stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+
+	def _notify(self):
+		now = self.seconds
+		while len(self._notifications) > 0:
+			next_at = self._notifications[0]
+			if now >= next_at:
+				# Notify!
+				self._notifications.pop(0)
+				self._play_notification()
+			else:
+				break
 
 	def run(self):
 		clr = "\r\033[K"
@@ -84,6 +106,7 @@ class StopWatch():
 		try:
 			while True:
 				cmd = self._input_timeout(f"{clr}{self._fmt_secs(self.seconds)} {'stopped' if self.stopped else ''}", timeout_secs = 1)
+				self._notify()
 				if cmd == "":
 					if not self.stopped:
 						print(f"Intermediate time: {self._fmt_now()} -- time taken {self._fmt_secs(self.seconds)}")
@@ -103,4 +126,10 @@ class StopWatch():
 			print()
 			print(f"End time: {self._fmt_now()} -- time taken {self._fmt_secs(self.seconds)}")
 
-StopWatch().run()
+parser = FriendlyArgumentParser(description = "Command line stopwatch.")
+parser.add_argument("--notification-secs", action = "store_true", help = "Instead of minutes, use seconds for the notification command line option.")
+parser.add_argument("-s", "--sound", metavar = "minutes", type = int, action = "append", default = [ ], help = "Play a notification sound at this minute mark. Can be used multiple times.")
+parser.add_argument("-n", "--notification-sound", metavar = "file", default = "/usr/share/sounds/freedesktop/stereo/complete.oga", help = "Notification sound to play when mark is hit. Defaults to %(default)s.")
+args = parser.parse_args(sys.argv[1:])
+
+StopWatch(args).run()
