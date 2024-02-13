@@ -674,3 +674,9 @@ qdbus org.kde.kglobalaccel /component/khotkeys invokeShortcut {13c7148c-2439-41f
 ## KDE execute shortcut on Meta (Super_L)
 kwriteconfig5 --file ~/.config/kwinrc --group ModifierOnlyShortcuts --key Meta "org.kde.kglobalaccel,/component/khotkeys,org.kde.kglobalaccel.Component,invokeShortcut,{13c7148c-2439-41fc-9d48-6a5839ee4205}"
 qdbus org.kde.KWin /KWin reconfigure
+
+## TP-Link Serial Console
+picocom --baud 115200 --omap delbs --imap bsdel /dev/ttyACM0
+show interface vlan 999
+show vlan
+show interface status
