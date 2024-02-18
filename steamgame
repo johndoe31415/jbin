@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	steamgame: Play a game on steam, but call xrandr before and after
+#	Copyright (C) 2024-2024 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import os
+import time
+import subprocess
+
+supported_games = {
+	"dsp": (1366540, "Dyson Sphere Program"),
+}
+executable_name = os.path.basename(sys.argv[0])
+if executable_name == "steamgame":
+	print(f"You cannot call '{executable_name}' directly but have to symlink it to a game name.")
+	sys.exit(1)
+
+if executable_name not in supported_games:
+	print(f"Game '{executable_name}' not yet in supported games list.")
+	sys.exit(1)
+
+def ps_ax():
+	return subprocess.check_output([ "ps", "ax" ]).decode()
+
+
+current_profile = subprocess.check_output([ "autorandr", "--current" ]).decode().split("\n")[0]
+subprocess.check_call([ "autorandr", "game" ])
+
+(game_id, game_executable_name) = supported_games[executable_name]
+subprocess.check_call([ "steam", f"steam://rungameid/{game_id}" ])
+
+time.sleep(30)
+while True:
+	ps_output = ps_ax()
+	if game_executable_name not in ps_output:
+		# Game quit.
+		break
+	time.sleep(10)
+
+subprocess.check_call([ "autorandr", current_profile ])
