@@ -32,10 +32,10 @@ class NetIfMonitor():
 
 	def __init__(self, args):
 		self._args = args
-		self._last_addresses = None
+		self._last_addresses = { }
 
-	def _get_addresses(self):
-		output = subprocess.check_output([ "ip", "a", "s", self._args.ifname ]).decode("ascii")
+	def _get_addresses(self, ifname):
+		output = subprocess.check_output([ "ip", "a", "s", ifname ]).decode("ascii")
 		addresses = [ ]
 		for rematch in self._ADDRESS_RE.finditer(output):
 			group = rematch.groupdict()
@@ -43,16 +43,23 @@ class NetIfMonitor():
 		addresses.sort()
 		return addresses
 
-	def _log_addresses(self, addresses):
-		log_str = f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {' '.join(addresses)}"
+	def _get_all_addresses(self):
+		addresses = { }
+		for ifname in self._args.ifname:
+			addresses[ifname] = self._get_addresses(ifname)
+		return addresses
+
+	def _log_addresses(self, ifname, addresses):
+		log_str = f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {ifname} {' '.join(addresses)}"
 		with open(self._args.output_logfile, "a") as f:
 			print(log_str, file = f)
 
 	def _check_interface(self):
-		addresses = self._get_addresses()
-		if addresses != self._last_addresses:
-			self._log_addresses(addresses)
-			self._last_addresses = addresses
+		all_addresses = self._get_all_addresses()
+		for (ifname, addresses) in sorted(all_addresses.items()):
+			if addresses != self._last_addresses.get(ifname):
+				self._log_addresses(ifname, addresses)
+		self._last_addresses = all_addresses
 
 	def run(self):
 		while True:
@@ -62,7 +69,7 @@ class NetIfMonitor():
 parser = FriendlyArgumentParser(description = "Monitor a network interface for address changes.")
 parser.add_argument("-o", "--output-logfile", metavar = "filename", default = "netifmon.log", help = "Filename to log to. Defaults to %(default)s.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
-parser.add_argument("ifname", help = "Network interface to monitor")
+parser.add_argument("ifname", nargs = "+", help = "Network interface(s) to monitor")
 args = parser.parse_args(sys.argv[1:])
 
 nim = NetIfMonitor(args)
