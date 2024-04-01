@@ -29,14 +29,32 @@ from FriendlyArgumentParser import FriendlyArgumentParser
 
 class NetIfMonitor():
 	_ADDRESS_RE = re.compile(r"^\s+(inet|inet6) (?P<addr>[^\s]+)", flags = re.MULTILINE)
+	_IFNAME_RE = re.compile(r"^\d+:\s+(?P<ifname>[^:]+):", flags = re.MULTILINE)
 
 	def __init__(self, args):
 		self._args = args
 		self._last_addresses = { }
+		self._interfaces = self._args.ifname
+		if len(self._interfaces) == 0:
+			self._interfaces = self._list_all_interfaces()
+
+	def _list_all_interfaces(self):
+		interfaces = [ ]
+		output = subprocess.check_output([ "ip", "a" ]).decode("ascii")
+		for rematch in self._IFNAME_RE.finditer(output):
+			group = rematch.groupdict()
+			interfaces.append(group["ifname"])
+		interfaces.sort()
+		return interfaces
 
 	def _get_addresses(self, ifname):
-		output = subprocess.check_output([ "ip", "a", "s", ifname ]).decode("ascii")
 		addresses = [ ]
+		try:
+			output = subprocess.check_output([ "ip", "a", "s", ifname ], stderr = subprocess.DEVNULL).decode("ascii")
+		except subprocess.CalledProcessError:
+			# Possibly interface has vanished, simply return no addresses.
+			return addresses
+
 		for rematch in self._ADDRESS_RE.finditer(output):
 			group = rematch.groupdict()
 			addresses.append(group["addr"])
@@ -45,7 +63,7 @@ class NetIfMonitor():
 
 	def _get_all_addresses(self):
 		addresses = { }
-		for ifname in self._args.ifname:
+		for ifname in self._interfaces:
 			addresses[ifname] = self._get_addresses(ifname)
 		return addresses
 
@@ -53,6 +71,8 @@ class NetIfMonitor():
 		log_str = f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {ifname} {' '.join(addresses)}"
 		with open(self._args.output_logfile, "a") as f:
 			print(log_str, file = f)
+		if self._args.verbose >= 1:
+			print(log_str)
 
 	def _check_interface(self):
 		all_addresses = self._get_all_addresses()
@@ -69,7 +89,7 @@ class NetIfMonitor():
 parser = FriendlyArgumentParser(description = "Monitor a network interface for address changes.")
 parser.add_argument("-o", "--output-logfile", metavar = "filename", default = "netifmon.log", help = "Filename to log to. Defaults to %(default)s.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
-parser.add_argument("ifname", nargs = "+", help = "Network interface(s) to monitor")
+parser.add_argument("ifname", nargs = "*", help = "Network interface(s) to monitor. If none specified, monitor all of them.")
 args = parser.parse_args(sys.argv[1:])
 
 nim = NetIfMonitor(args)
