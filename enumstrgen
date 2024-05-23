@@ -28,7 +28,7 @@ from FriendlyArgumentParser import FriendlyArgumentParser
 enum_re = re.compile("enum\s+(?P<enum_name>[_a-zA-Z][_a-zA-Z0-9]*)\s*{(?P<enum_content>[^}]+?)}", flags = re.MULTILINE)
 
 class ParsedEnum():
-	_ENUM_LINE = re.compile("\s*(?P<enum_name>[_a-zA-Z][_a-zA-Z0-9]*)(\s*=\s*(?P<enum_value>[^,]+))?\s*,\s*(//\s*(?P<enum_comment>.*))?")
+	_ENUM_LINE = re.compile("\s*(?P<enum_name>[_a-zA-Z][_a-zA-Z0-9]*)(\s*=\s*(?P<enum_value>[^,]+))?\s*,\s*((//|/\*(!<)?)\s*(?P<enum_comment>.*?)\s*(\*/))?")
 
 	def __init__(self, name, content, header_filename):
 		self._name = name
@@ -73,6 +73,9 @@ class ParsedEnum():
 	def sparse(self):
 		return (self.maxvalue - len(self._items)) > 10
 
+	def __len__(self):
+		return len(self._items)
+
 	def __iter__(self):
 		return iter(sorted(self._items.items()))
 
@@ -91,7 +94,11 @@ for header_filename in args.headerfile:
 	for rematch in enum_re.finditer(text):
 		rematch = rematch.groupdict()
 		parsed_enum = ParsedEnum(rematch["enum_name"], rematch["enum_content"], header_filename)
-		parsed_enums.append(parsed_enum)
+		if len(parsed_enum) > 0:
+			parsed_enums.append(parsed_enum)
+		else:
+			if args.verbose >= 1:
+				print(f"Warning: empty enum ignored: enum {rematch['enum_name']}")
 
 c_filename = args.output_filename + ".c"
 h_filename = args.output_filename + ".h"
