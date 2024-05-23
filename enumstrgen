@@ -182,7 +182,7 @@ with open(c_filename, "w") as f:
 				print("	switch (value) {", file = f)
 				for (value, (name, comment)) in parsed_enum:
 					if comment is not None:
-						print(f"		case {name}: return \"{comment}\";", file = f)
+						print(f"		case {name}: return \"{escape(comment)}\";", file = f)
 				print("		default: return NULL;", file = f)
 				print("	}", file = f)
 				print("};", file = f)
