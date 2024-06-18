@@ -1,7 +1,7 @@
 #!/bin/bash
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	profile.local: local login shell setup
-#	Copyright (C) 2009-2018 Johannes Bauer
+#	Copyright (C) 2009-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -41,13 +41,18 @@ pathadd() {
 
 PATH=""
 pathadd "${JBIN_DIR}"
-pathadd "${HOME}/bin"
 pathadd "${HOME}/.local/bin"
-pathadd /usr/local/sbin
+if [ "$EUID" == "0" ] || [ "$USER" == "root" ]; then
+	pathadd /usr/local/sbin
+fi
 pathadd /usr/local/bin
-pathadd /usr/sbin
+if [ "$EUID" == "0" ] || [ "$USER" == "root" ]; then
+	pathadd /usr/sbin
+fi
 pathadd /usr/bin
-pathadd /sbin
+if [ "$EUID" == "0" ] || [ "$USER" == "root" ]; then
+	pathadd /sbin
+fi
 pathadd /bin
 if [ "$EUID" != "0" ] && [ "$USER" != "root" ]; then
 	pathadd /usr/local/games
@@ -160,10 +165,3 @@ LC_MEASUREMENT="${DFL_LOCALE}"
 LC_IDENTIFICATION="${DFL_LOCALE}"
 LC_ALL=""
 export LC_LANG LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT LC_IDENTIFICATION LANGUAGE
-
-# Check ssh keys
-which python3 >/dev/null 2>&1
-if [ "$?" == "0" ]; then
-	# Have Python3
-	ssh-checkkeys
-fi
