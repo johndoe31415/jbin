@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	todo: Manage a TODO list
-#	Copyright (C) 2022-2022 Johannes Bauer
+#	Copyright (C) 2022-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -102,7 +102,7 @@ class TodoManager():
 				print(f"Error with input: {str(e)}")
 
 	def _new_todo(self):
-		created_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+		created_utc = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 		text = self._input_qry("Text    : ", self._check_text)
 		if self._args.add_todo_with_extra_data:
 			category = self._input_qry("Category: ", self._check_category)
@@ -113,7 +113,7 @@ class TodoManager():
 		self._cursor.execute("INSERT INTO todos (created_utc, category, text, priority) VALUES (?, ?, ?, ?);", (created_utc, category, text, priority))
 
 	def _print_todos(self):
-		now_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+		now_utc = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 		self._cursor.execute("""
 				SELECT id, created_utc, category, text, priority
 					FROM todos
@@ -139,7 +139,7 @@ class TodoManager():
 			print()
 
 	def _delete_todo(self):
-		resolved_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+		resolved_utc = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 		while True:
 			db_id = self._input_qry("ID to delete: ", self._check_id)
 			if db_id is None:
@@ -147,7 +147,7 @@ class TodoManager():
 			self._cursor.execute("UPDATE todos SET resolved_utc = ? WHERE id = ?;", (resolved_utc, db_id))
 
 	def _defer_todo(self):
-		deferred_until_utc_ts = (datetime.datetime.utcnow() + datetime.timedelta(0, 3600 * self._args.defer_todo))
+		deferred_until_utc_ts = (datetime.datetime.now(datetime.UTC) + datetime.timedelta(0, 3600 * self._args.defer_todo))
 		deferred_until_utc = deferred_until_utc_ts.strftime("%Y-%m-%dT%H:%M:%SZ")
 		while True:
 			db_id = self._input_qry(f"ID to defer for {self._args.defer_todo} hours: ", self._check_id)
