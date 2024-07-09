@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	replaceall: Search/replace pattern on many files using Python regexes
-#	Copyright (C) 2019-2020 Johannes Bauer
+#	Copyright (C) 2019-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -144,7 +144,7 @@ if have_template:
 		"py3classes":		r"^(?P<linestart>[ \t]*class )(?P<classname>[A-Z][A-Za-z0-9]*)\(object\):$",
 	}[args.template]
 	replace = {
-		"copyrightyear":	r"\g<linestart>" + now.strftime("%Y") + "\g<author>",
+		"copyrightyear":	r"\g<linestart>" + now.strftime("%Y") + r"\g<author>",
 		"py3classes":		r"\g<linestart>\g<classname>():"
 	}[args.template]
 	replace_type = {
