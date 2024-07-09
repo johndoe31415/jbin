@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	pointer-lock-unlock: Deactivate/activate all mouse pointers using xinput
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -20,11 +20,12 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-import subprocess
 import re
+import sys
+import subprocess
 
 def enumerate_ptr_ids():
-	slave_ptr_regex = re.compile(r"id=(?P<id>\d+).*slave\s+pointer")
+	slave_ptr_regex = re.compile(r"id=(?P<id>\d+).*(slave\s+pointer|floating slave)")
 	devices = subprocess.check_output([ "xinput", "list" ])
 	devices = devices.decode().split("\n")
 	ptr_ids = set()
@@ -57,7 +58,10 @@ def enable_all(ids):
 ptr_ids = enumerate_ptr_ids()
 states = { pid: get_enable_status(pid) for pid in ptr_ids }
 dev_states = set(states.values())
-if len(dev_states) == 2:
+if len(dev_states) == 0:
+	print("No pointer devices found to enable/disable.", file = sys.stderr)
+	sys.exit(1)
+elif len(dev_states) == 2:
 	# Some on, some off
 	disable_all(ptr_ids)
 else:
