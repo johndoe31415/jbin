@@ -680,3 +680,9 @@ picocom --baud 115200 --omap delbs --imap bsdel /dev/ttyACM0
 show interface vlan 999
 show vlan
 show interface status
+
+## Vim XML file editing
+In visual mode:
+  - at (select block)
+  - it (select inner block)
+  - atato (jump to parent)
