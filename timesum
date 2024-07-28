@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	timesum: Add/subtract times
-#	Copyright (C) 2013-2018 Johannes Bauer
+#	Copyright (C) 2013-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -23,11 +23,10 @@
 import re
 import sys
 
-regex = re.compile("^(?P<neg>-)?(:?(?P<hour>\d+)[:\.])?(?P<min>\d+)(?:(?P<minishr>h))?$")
+regex = re.compile(r"^(?P<neg>-)?(:?(?P<hour>\d+)[:\.])?(?P<min>\d+)(?:(?P<minishr>h))?$")
 def match_time(timestr):
 	match = regex.match(timestr)
 	if match:
-		match = match.groupdict()
 		if match["hour"] is None:
 			if match["minishr"] is None:
 				value = int(match["min"])
@@ -63,17 +62,20 @@ if (len(sys.argv) >= 2) and (sys.argv[1] == "testcase"):
 	assert(match_time("-3h") == -3 * 60)
 	sys.exit(0)
 
-timesum = 0
-while True:
-	entrystr = input("Time (h:m): ")
-	entry = match_time(entrystr)
-	if entry is None:
-		print("Unable to parse '%s'" % (entrystr))
-	else:
-		timesum += entry
-	if entry >= 0:
-		sign = "+"
-	else:
-		sign = "-"
-	print("%s%3d:%02d -> %3d:%02d = %5d min" % (sign, entry // 60, entry % 60, timesum // 60, timesum % 60, timesum))
-
+try:
+	timesum = 0
+	while True:
+		entrystr = input("Time (h:m): ")
+		entry = match_time(entrystr)
+		if entry is None:
+			print("Unable to parse '%s'" % (entrystr))
+			continue
+		else:
+			timesum += entry
+		if entry >= 0:
+			sign = "+"
+		else:
+			sign = "-"
+		print("%s%3d:%02d -> %3d:%02d = %5d min" % (sign, entry // 60, entry % 60, timesum // 60, timesum % 60, timesum))
+except (EOFError, KeyboardInterrupt):
+	print()
