@@ -686,3 +686,13 @@ In visual mode:
   - at (select block)
   - it (select inner block)
   - atato (jump to parent)
+
+## storcli
+  - Overview: ./storcli64 /c0 show all
+  - Overview as JSON: ./storcli64 /c0 show all j
+  - Detailed disk info: ./storcli64 /c0 /e8 /s7 show all
+  - Move c0:e8:s7 from UBad to UGood: ./storcli64 /c0 /e8 /s7 set good
+  - Add foreign disks to pool: ./storcli64 /c0 /fall import
+  - Rebuild progress: ./storcli64 /c0 /eall /sall show rebuild
+  - Smartctl with MegaRAID: smartctl --scan
+  - smartctl -a -d megaraid,13 /dev/sda
