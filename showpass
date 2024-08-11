@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	shwopass: Show a password so that it can be entered easily
-#	Copyright (C) 2021-2021 Johannes Bauer
+#	Copyright (C) 2021-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -23,7 +23,12 @@
 import getpass
 import string
 import math
-password = getpass.getpass("Password: ")
+import sys
+
+if sys.stdin.isatty():
+	password = getpass.getpass("Password: ")
+else:
+	password = sys.stdin.read().rstrip("\r\n")
 
 def getgroup(char):
 	groups = {
