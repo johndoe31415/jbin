@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	sanepass: Create fixed-entropy passwords with a nice alphabet
-#	Copyright (C) 2018-2020 Johannes Bauer
+#	Copyright (C) 2018-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -24,112 +24,150 @@ import os
 import sys
 import string
 import math
+import functools
+import subprocess
+import re
+import random
 from FriendlyArgumentParser import FriendlyArgumentParser
 
-filtered_alphabet = set("".join([
-	"1liI",
-	"B8",
-	"O0o",
-	"UV",
-	"uv",
-	"2Z",
-	"6G",
-]))
-filtered_us_alphabet = set("zZyY")
-source_alphabet = {
-	"all":		string.ascii_uppercase + string.ascii_lowercase + string.digits,
-	"chars":	string.ascii_uppercase + string.ascii_lowercase,
-	"phone":	string.ascii_lowercase,
-}
+class PasswordGenerator():
+	_AMBIGUOUS_CHARACTERS = set("".join([
+		"1liI",
+		"B8",
+		"O0o",
+		"UV",
+		"uv",
+		"2Z",
+		"6G",
+	]))
+	_US_ALPHABET_AMBIGUOUS_CHARACTER = set("zZyY")
 
-parser = FriendlyArgumentParser()
-parser.add_argument("-u", "--filter-us-keyboard", action = "store_true", help = "Filter characters that are on different places on a QWERTZ vs. QWERTY keyboard.")
-parser.add_argument("-n", "--no-filter-ambiguous", action = "store_true", help = "Do not filter characters that could be ambiguous, such as 1/l/I or O/0, from the passwords.")
-parser.add_argument("-a", "--alphabet", choices = [ "all", "chars", "phone" ], default = "all", help = "Specifies the input alphabet to use. Defaults to %(default)s.")
-parser.add_argument("-c", "--consecutive-filter", choices = [ "lalala", "qwertz" ], help = "Character alphabets can vary according to the given rules, for example passphrases can be generated that generate only consonant/vovel combinations ('lalala') or avoid thick finger combinations (for typing on a smart phone).")
-parser.add_argument("--thick-finger-distance", metavar = "keycnt", type = float, default = 2, help = "Euclidian distance between two keys that has to minimally given to pass the 'thick finger test'. Defaults to %(default).1f")
-parser.add_argument("-v", "--verbose", action = "store_true", help = "Increase output verbosity.")
-#parser.add_argument("-l", "--min-length", type = int, help = "Minimum length of characters the password must have.")
+	# Characters that are on the same key on both US and DE
+	_SAFE_SPECIAL_CHARS = set("!$%")
+
+	def __init__(self, args):
+		self._args = args
+
+		self._alphabet = {
+			"all":		string.ascii_uppercase + string.ascii_lowercase + string.digits,
+			"chars":	string.ascii_uppercase + string.ascii_lowercase,
+			"phone":	string.ascii_lowercase,
+		}
+
+	@property
+	def base_alphabet(self):
+		alphabet = set(string.ascii_lowercase)
+		if not self._args.lower_case_only:
+			alphabet |= set(string.ascii_uppercase)
+		if self._args.digits:
+			alphabet |= set(string.digits)
+		if self._args.special:
+			alphabet |= self._SAFE_SPECIAL_CHARS
+		alphabet -= self._AMBIGUOUS_CHARACTERS
+		alphabet -= self._US_ALPHABET_AMBIGUOUS_CHARACTER
+		return alphabet
+
+	@functools.cached_property
+	def alphabets(self):
+		if self._args.mode == "random":
+			alphabets = [ list(self.base_alphabet) ]
+		elif self._args.mode == "pronouncible":
+			vovels = set("aeiouAEIOU")
+			base = self.base_alphabet
+			alphabet1 = list(base - vovels)
+			alphabet2 = list(base & vovels)
+			alphabets = [ list(alphabet1), list(alphabet2) ]
+		elif self._args.mode == "dictionary":
+			cmd = [ "aspell", "--lang", self._args.dictionary_locale, "dump", "master" ]
+			wordlist = subprocess.check_output(cmd).decode("utf-8")
+			words = set()
+			remove_re = re.compile("['/].*$")
+			for word in wordlist.split("\n"):
+				word = remove_re.sub("", word)
+				if not (3 <= len(word) <= 8):
+					continue
+				words.add(word)
+			alphabets = [ list(words) ]
+		else:
+			raise NotImplementedError(self._args.mode)
+
+		# We do shuffle so the very last character is also randomly distributed
+		for alphabet in alphabets:
+			random.shuffle(alphabet)
+		return alphabets
+
+	@property
+	def joinstr(self):
+		if self._args.mode == "dictionary":
+			return " "
+		else:
+			return ""
+
+	def _gen_rand_int_bits(self, bits: int):
+		byte_count = (bits + 7) // 8
+		return int.from_bytes(os.urandom(byte_count))
+
+	def _compute_needed_entropy_bits(self):
+		min_bits = 0
+		if self._args.min_length is not None:
+			need_bits = 0
+			alphabets = self.alphabets
+			for i in range(self._args.min_length):
+				need_bits += math.log(len(alphabets[i % len(alphabets)]), 2)
+			min_bits = math.ceil(need_bits)
+		return max(min_bits, self._args.entropy_bits)
+
+	def _gen_rand_int(self):
+		bits = self._compute_needed_entropy_bits()
+		return self._gen_rand_int_bits(bits)
+
+	def _gen_password(self):
+		alphabets = self.alphabets
+		pw = self._gen_rand_int()
+		chars = [ ]
+
+		while pw > 0:
+			alphabet_index = len(chars) % len(alphabets)
+			alphabet = alphabets[alphabet_index]
+
+			(pw, next_choice) = divmod(pw, len(alphabet))
+			chars.append(alphabet[next_choice])
+		return chars
+
+	def _validate(self, pw: str):
+		if not self._args.guarantee_special:
+			return True
+
+		if self._args.digits and (len(set(pw) & set(string.digits)) == 0):
+			return False
+
+		if self._args.special and (len(set(pw) & self._SAFE_SPECIAL_CHARS) == 0):
+			return False
+
+		return True
+
+	def run(self):
+		while True:
+			pw = self._gen_password()
+			pw = self.joinstr.join(pw)
+			if self._args.max_length is not None:
+				pw = pw[:self._args.max_length]
+			if self._validate(pw):
+				print(pw)
+				return
+
+
+parser = FriendlyArgumentParser(description = "Generate passwords with a minimum amount of entropy.")
+parser.add_argument("--dictionary-locale", metavar = "locale", default = "en", help = "Locale to choose when dumping the aspell dictionary in dictionary mode.")
+parser.add_argument("-d", "--digits", action = "store_true", help = "Include numbers in alphabet selection.")
+parser.add_argument("-s", "--special", action = "store_true", help = "Include special characters in alphabet selection.")
+parser.add_argument("-g", "--guarantee-special", action = "store_true", help = "Guarantee digits/special characters are present when including them in the alphabet.")
+parser.add_argument("-c", "--lower-case-only", action = "store_true", help = "Do not use uppercase letters.")
+parser.add_argument("-l", "--min-length", metavar = "chars", type = int, help = "Use this minimum length of characters.")
+parser.add_argument("-L", "--max-length", metavar = "chars", type = int, help = "Use this maximum length of characters. Will truncate the entropy!")
+parser.add_argument("-m", "--mode", choices = [ "random", "dictionary", "pronouncible" ], default = "random", help = "Mode to use for password generation. Can be one of %(choices)s, defaults to %(default)s.")
 parser.add_argument("entropy_bits", metavar = "bits", type = int, nargs = "?", default = 128, help = "Bits of entropy the password should contain. Defaults to %(default)d bit.")
 args = parser.parse_args(sys.argv[1:])
 
-bytecnt = (args.entropy_bits + 7) // 8
-passphrase = os.urandom(bytecnt)
-intphrase = int.from_bytes(passphrase, "little")
-
-alphabet = source_alphabet[args.alphabet]
-alphabet = set(alphabet)
-if not args.no_filter_ambiguous:
-	alphabet -= filtered_alphabet
-if args.filter_us_keyboard:
-	alphabet -= filtered_us_alphabet
-lalphabet = list(alphabet)
-
-if args.consecutive_filter is None:
-	next_alphabet = { char: lalphabet for char in alphabet }
-elif args.consecutive_filter == "lalala":
-	consonants = [ char for char in alphabet if char.lower() in "bcdfghjklmnpqrstvwxyz" ]
-	vovels = [ char for char in alphabet if char.lower() in "aeiou" ]
-	rest = [ char for char in alphabet if ((char not in consonants) and (char not in vovels)) ]
-	vovels_and_rest = vovels + rest
-
-	next_alphabet = { }
-	for char in alphabet:
-		if char in consonants:
-			next_alphabet[char] = vovels_and_rest
-		else:
-			next_alphabet[char] = consonants
-elif args.consecutive_filter == "qwertz":
-	keyboard_rows = [
-		(0, "1234567890"),
-		(0.5, "qwertzuiop"),
-		(0.8, "asdfghjkl"),
-		(1.1, "yxcvbnm"),
-	]
-	ignored_chars = set(alphabet)
-	coordinates = { }
-	for (y, (x_offset, row)) in enumerate(keyboard_rows):
-		for (charno, char) in enumerate(row):
-			x = x_offset + charno
-			if char in alphabet:
-				coordinates[char] = (x, y)
-				ignored_chars -= set([ char ])
-			if char.upper() in alphabet:
-				coordinates[char.upper()] = (x, y)
-				ignored_chars -= set([ char.upper() ])
-	ignored_chars = list(ignored_chars)
-
-	next_alphabet = { }
-	for char in alphabet:
-		if char in coordinates:
-			(x, y) = coordinates[char]
-			next_alphabet[char] = list(ignored_chars)
-			for (other_char, (other_x, other_y)) in coordinates.items():
-				dist = math.sqrt((x - other_x) ** 2 + (y - other_y) ** 2)
-				if dist >= args.thick_finger_distance:
-					next_alphabet[char].append(other_char)
-		else:
-			next_alphabet[char] = lalphabet
-else:
-	raise NotImplementedError(args.consecutive_filter)
-
-alphabet = lalphabet
-current_alphabet = alphabet
-
-if args.verbose:
-	print("Used alphabet: %s" % ("".join(sorted(lalphabet))))
-	for (char, follow_alphabet) in sorted(next_alphabet.items()):
-		print("%s: %s" % (char, "".join(sorted(follow_alphabet))))
-
-for (char, follow_alphabet) in next_alphabet.items():
-	if len(follow_alphabet) < 2:
-		print("There are only %d characters (\"%s\") that can follow '%s', this leads to uncreatable passphrases. Aborting." % (len(follow_alphabet), "".join(sorted(follow_alphabet)), char))
-		sys.exit(1)
-
-decoded = ""
-while intphrase > 0:
-	(intphrase, nextchar) = divmod(intphrase, len(current_alphabet))
-	nextchar = current_alphabet[nextchar]
-	current_alphabet = next_alphabet[nextchar]
-	decoded += nextchar
-print(decoded)
+pwgen = PasswordGenerator(args)
+pwgen.run()
