@@ -1,0 +1,54 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	suspendctl: Prevent suspend on a system
+#	Copyright (C) 2024-2024 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Control supend behavior of a system through systemd.")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-e", "--enable-suspend", action = "store_true", help = "Enable suspend.")
+group.add_argument("-d", "--disable-suspend", action = "store_true", help = "Disable suspend.")
+parser.add_argument("-p", "--persistent", action = "store_true", help = "Permanantly enable/disable, not just during runtime.")
+args = parser.parse_args(sys.argv[1:])
+
+if (not args.enable_suspend) and (not args.disable_suspend):
+	print("Nothing to do.")
+	sys.exit(1)
+
+targets = [
+	"sleep.target",
+	"suspend.target",
+	"hibernate.target",
+	"hybrid-sleep.target",
+]
+
+cmd = [ "systemctl" ]
+if args.disable_suspend:
+	cmd += [ "mask" ]
+else:
+	cmd += [ "unmask" ]
+if not args.persistent:
+	cmd += [ "--runtime" ]
+cmd += targets
+
+subprocess.check_call(cmd)
