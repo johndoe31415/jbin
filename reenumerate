@@ -25,12 +25,12 @@ import re
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 parser = FriendlyArgumentParser(description = "Reenumerate prefixes of a list of names.")
-parser.add_argument("-l", "--length", type = int, default = 3, help = "Number of characters for enumeration, defaults to %(default)d.")
-parser.add_argument("-s", "--start", type = int, default = 10, help = "First value to enumerate. Defaults to %(default)d.")
-parser.add_argument("-t", "--step", type = int, default = 10, help = "Enumeration step to take. Defaults to %(default)d.")
+parser.add_argument("-l", "--length", metavar = "length", type = int, default = 3, help = "Number of characters for enumeration, defaults to %(default)d.")
+parser.add_argument("-s", "--start", metavar = "value", type = int, default = 10, help = "First value to enumerate. Defaults to %(default)d.")
+parser.add_argument("-t", "--step", metavar = "value", type = int, default = 10, help = "Enumeration step to take. Defaults to %(default)d.")
 args = parser.parse_args(sys.argv[1:])
 
-regex = re.compile("(?P<prefix>\d+_)(?P<filename>.*)")
+regex = re.compile(r"(?P<prefix>\d+)(?P<separator>[-_])(?P<filename>.*)")
 value = args.start
 for line in sys.stdin:
 	line = line.rstrip("\r\n")
@@ -38,5 +38,5 @@ for line in sys.stdin:
 	if rematch is None:
 		print(f"{value:0{args.length}d}_{line}")
 	else:
-		print(f"{value:0{args.length}d}_{rematch.groupdict()['filename']}")
+		print(f"{value:0{args.length}d}{rematch['separator']}{rematch['filename']}")
 	value += args.step
