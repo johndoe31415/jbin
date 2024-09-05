@@ -696,3 +696,15 @@ In visual mode:
   - Rebuild progress: ./storcli64 /c0 /eall /sall show rebuild
   - Smartctl with MegaRAID: smartctl --scan
   - smartctl -a -d megaraid,13 /dev/sda
+
+## Bind9
+Create TSIG key for record update: tsig-keygen
+Use that file as keyfile for nsupdate as well as inside named.conf
+Trigger an update:
+```
+update delete joe.dyn.spornkuller.de A
+update add joe.dyn.spornkuller.de 10 A 2.2.3.4
+send
+```
+
+`nsupdate -k keyfile.txt <nsupdate_cmds.txt`
