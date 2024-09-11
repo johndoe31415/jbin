@@ -1,0 +1,57 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	tab2html: Take tab-formatted data and produce a HTML table
+#	Copyright (C) 2024-2024 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import re
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser(description = "Create HTML tables from tab-separated data")
+parser.add_argument("-c", "--bold-column", action = "store_true", help = "Make the first column bold.")
+parser.add_argument("-r", "--bold-row", action = "store_true", help = "Make the first row bold.")
+parser.add_argument("-p", "--padding-pixels", metavar = "px", default = 5, type = float, help = "Cell padding. Defaults to %(default).0f pixels.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Increase output verbosity.")
+args = parser.parse_args(sys.argv[1:])
+
+sep = re.compile(r"\t+")
+
+print("<table><tbody>")
+table_data = sys.stdin.read()
+rows = table_data.split("\n")
+for (row_no, row) in enumerate(rows, 1):
+	if row.strip() == "":
+		continue
+	cols = sep.split(row)
+
+	coldata = [ ]
+	for (col_no, col) in enumerate(cols):
+		attrs = { "border": "1px solid black", "padding": "5px" }
+		if (args.bold_column and (col_no == 1)) or (args.bold_row and (row_no == 1)):
+			attrs["font-weight"] = "bold"
+		if len(attrs) == 0:
+			coldata.append(f"<td>{col}</td>")
+		else:
+			style = ";".join(f"{key}:{value}" for (key, value) in attrs.items())
+			coldata.append(f"<td style=\"{style}\">{col}</td>")
+
+	coldata = "".join(coldata)
+	print(f"<tr>{coldata}</tr>")
+print("</tbody></table>")
