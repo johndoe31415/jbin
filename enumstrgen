@@ -25,10 +25,10 @@ import re
 import os
 from FriendlyArgumentParser import FriendlyArgumentParser
 
-enum_re = re.compile("enum\s+(?P<enum_name>[_a-zA-Z][_a-zA-Z0-9]*)\s*{(?P<enum_content>[^}]+?)}", flags = re.MULTILINE)
+enum_re = re.compile(r"enum\s+(?P<enum_name>[_a-zA-Z][_a-zA-Z0-9]*)\s*{(?P<enum_content>[^}]+?)}", flags = re.MULTILINE)
 
 class ParsedEnum():
-	_ENUM_LINE = re.compile("\s*(?P<enum_name>[_a-zA-Z][_a-zA-Z0-9]*)(\s*=\s*(?P<enum_value>[^,]+))?\s*,\s*((//|/\*(!<)?)\s*(?P<enum_comment>.*?)\s*(\*/))?")
+	_ENUM_LINE = re.compile(r"\s*(?P<enum_name>[_a-zA-Z][_a-zA-Z0-9]*)(\s*=\s*(?P<enum_value>[^,]+))?\s*,\s*((//|/\*(!<)?)\s*(?P<enum_comment>.*?)\s*(\*/))?")
 
 	def __init__(self, name, content, header_filename):
 		self._name = name
