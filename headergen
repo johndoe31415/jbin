@@ -25,7 +25,7 @@ import sys
 import re
 
 if len(sys.argv) != 2:
-	print("%s [C-File]" % (sys.argv[0]))
+	print(f"{sys.argv[0]} [C-File]", file = sys.stderr)
 	sys.exit(1)
 
 delimiter = {
@@ -44,7 +44,7 @@ cfilesplit = cfile.split(".")
 extension = cfilesplit[-1]
 hfile = ".".join(cfilesplit[:-1] + [ extensions[extension] ])
 
-fncdef = re.compile("^(EXPORTED_SYMBOL )?(?:(?P<keyword_static>static)\s+)?(?:(?P<keyword_pure>PURE|CONST)\s+)?(?P<prototype>[a-zA-Z].*) {$")
+fncdef = re.compile(r"^(EXPORTED_SYMBOL )?(?:(?P<keyword_static>static)\s+)?(?:(?P<keyword_pure>PURE|CONST)\s+)?(?P<prototype>[a-zA-Z].*) {$")
 # (?:\s+(?P<attribute>__attribute__ .*))?
 def process_cfile(cfile):
 	prototypes = [ ]
