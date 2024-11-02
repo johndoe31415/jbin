@@ -76,9 +76,14 @@ class CryptSetupRunner():
 
 	def _execute_user_hooks(self):
 		for user_entry in pwd.getpwall():
-			hook_script_name = self._args.hook_name.replace("~", user_entry.pw_dir)
+			hook_script_name = self._args.user_hook_name.replace("~", user_entry.pw_dir)
 			if os.path.isfile(hook_script_name):
 				self._execute_as_user(user_entry, hook_script_name)
+
+	def _execute_global_hook(self):
+		if os.path.isfile(self._args.global_hook_name):
+			print(f"Running {self._args.global_hook_name} as current user.")
+			subprocess.call([ self._args.global_hook_name ])
 
 	def run(self):
 		changes_made = False
@@ -86,11 +91,13 @@ class CryptSetupRunner():
 			changes_made = self._run(config_line) or changes_made
 		changes_made = True
 		if changes_made:
+			self._execute_global_hook()
 			self._execute_user_hooks()
 
 parser = FriendlyArgumentParser(description = "Sets up cryptsetup mapping and runs user-specific hooks afterwards.")
 parser.add_argument("-c", "--config-filename", metavar = "filename", default = "/etc/crypttab.late", help = "Configuration file to read. Same format as crypttab. Defaults to %(default)s.")
-parser.add_argument("-H", "--hook-name", metavar = "filename", default = "~/.local/bin/cryptsetup-late-hook", help = "For each user, this hook is executed after changes were made (under the specific users' account). Defaults to %(default)s.")
+parser.add_argument("-H", "--user-hook-name", metavar = "filename", default = "~/.local/bin/cryptsetup-late-hook", help = "For each user, this hook is executed after changes were made (under the specific users' account). Defaults to %(default)s.")
+parser.add_argument("-g", "--global-hook-name", metavar = "filename", default = "/root/.local/bin/cryptsetup-global-hook", help = "When this file exists and changes were made, this script is executed as the current user (typically root), before user hooks are run. Defaults to %(default)s.")
 args = parser.parse_args(sys.argv[1:])
 
 csr = CryptSetupRunner(args)
