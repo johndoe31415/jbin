@@ -89,9 +89,13 @@ class CryptSetupRunner():
 		changes_made = False
 		for config_line in self._config:
 			changes_made = self._run(config_line) or changes_made
-		changes_made = True
 		if changes_made:
 			self._execute_global_hook()
+
+			# Reload systemctl in case we have new home directories exposed now
+			# (e.g., after mounting /home in the global hook)
+			subprocess.call([ "systemctl", "daemon-reload" ])
+
 			self._execute_user_hooks()
 
 parser = FriendlyArgumentParser(description = "Sets up cryptsetup mapping and runs user-specific hooks afterwards.")
