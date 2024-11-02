@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #
 #	FriendlyArgumentParser - Argument parser with default help pages
-#	Copyright (C) 2011-2012 Johannes Bauer
+#	Copyright (C) 2011-2024 Johannes Bauer
 #
 #	This file is part of pycommon.
 #
@@ -39,7 +39,7 @@ class FriendlyArgumentParser(argparse.ArgumentParser):
 		if self.__silent_error:
 			raise Exception(msg)
 		else:
-			for line in textwrap.wrap("Error: %s" % (msg), subsequent_indent = "  "):
+			for line in textwrap.wrap(f"Error: {msg}", subsequent_indent = "  "):
 				print(line, file = sys.stderr)
 			print(file = sys.stderr)
 			self.print_help(file = sys.stderr)
@@ -55,14 +55,28 @@ def baseint(value, default_base = 10):
 	else:
 		return int(value, default_base)
 
+def baseint_unit(value, default_base = 10):
+	units = (
+		("k",	1000),
+		("ki",	1024),
+		("M",	1000 * 1000),
+		("Mi",	1024 * 1024),
+		("G",	1000 * 1000 * 1000),
+		("Gi",	1024 * 1024 * 1024),
+		("T",	1000 * 1000 * 1000 * 1000),
+		("Ti",	1024 * 1024 * 1024 * 1024),
+	)
+	for (suffix, coefficient) in units:
+		if value.endswith(suffix):
+			return coefficient * baseint(value[:-len(suffix)], default_base = default_base)
+	return baseint(value, default_base = default_base)
+
 if __name__ == "__main__":
 	parser = FriendlyArgumentParser(description = "Simple example application.")
-	parser.add_argument("-d", "--dbfile", metavar = "filename", type = str, default = "mydb.sqlite", help = "Specifies database file to use. Defaults to %(default)s.")
+	parser.add_argument("-d", "--dbfile", metavar = "filename", default = "mydb.sqlite", help = "Specifies database file to use. Defaults to %(default)s.")
 	parser.add_argument("-f", "--force", action = "store_true", help = "Do not ask for confirmation")
 	parser.add_argument("-x", metavar = "hexint", type = baseint, default = "0x100", help = "Defaults to %(default)s.")
 	parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
 	parser.add_argument("qids", metavar = "qid", type = int, nargs = "+", help = "Question ID(s) of the question(s) to be edited")
 	args = parser.parse_args(sys.argv[1:])
 	print(args)
-
-
