@@ -70,9 +70,17 @@ class CryptSetupRunner():
 		return self._attempt_cryptsetup(config_line)
 
 	def _execute_as_user(self, user_entry, hook_script_name: str):
-		print(f"Executing as {user_entry.pw_name}: {hook_script_name}")
+		print(f"Executing as user \"{user_entry.pw_name}\": {hook_script_name}")
+		os.chdir(user_entry.pw_dir)
 		cmd = [ "runuser", "-u", user_entry.pw_name, hook_script_name ]
-		subprocess.call(cmd)
+
+		# Prepare environment so that systemd --user connects to the correct
+		# bus (instead of connecting to the system bus, resulting in
+		# "Permission denied")
+		env = dict(os.environ)
+		env["XDG_RUNTIME_DIR"] = f"/run/user/{user_entry.pw_uid}"
+		env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path=/run/user/{user_entry.pw_uid}/bus"
+		subprocess.call(cmd, env = env)
 
 	def _execute_user_hooks(self):
 		for user_entry in pwd.getpwall():
