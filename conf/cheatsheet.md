@@ -708,3 +708,6 @@ send
 ```
 
 `nsupdate -k keyfile.txt <nsupdate_cmds.txt`
+
+## Download audio playlist
+yt-dlp -x --audio-format mp3 -o '%(playlist_index)02d - %(title)s.mp3' 'https://www.youtube.com/watch?v=Q6bmUrTLaJk&list=OLAK5uy_n5iq5UJJUH_-9jgXNBo8S2w6f6xpYB7sA'
