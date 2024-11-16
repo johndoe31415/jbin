@@ -711,3 +711,8 @@ send
 
 ## Download audio playlist
 yt-dlp -x --audio-format mp3 -o '%(playlist_index)02d - %(title)s.mp3' 'https://www.youtube.com/watch?v=Q6bmUrTLaJk&list=OLAK5uy_n5iq5UJJUH_-9jgXNBo8S2w6f6xpYB7sA'
+
+## Make annoying Snap STFU
+snap refresh --hold=forever     # Disable auto-update
+snap refresh                    # Trigger update
+snap refresh --unhold           # Make Snap annoying again
