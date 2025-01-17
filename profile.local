@@ -60,6 +60,7 @@ if [ "$EUID" != "0" ] && [ "$USER" != "root" ]; then
 else
 	pathadd "${JBIN_DIR}/sbin"
 fi
+pathadd /snap/bin
 export PATH
 
 
