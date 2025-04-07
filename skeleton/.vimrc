@@ -176,6 +176,7 @@ autocmd FileType html autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType css autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType json autocmd BufWritePre <buffer> :%s/\s\+$//e
 autocmd FileType xml autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType rust autocmd BufWritePre <buffer> :%s/\s\+$//e
 
 " Allow pasting with middle mouse button
 set clipboard=unnamedplus
