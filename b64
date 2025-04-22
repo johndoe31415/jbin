@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	b64: base64 en/decoding tool
-#	Copyright (C) 2015-2018 Johannes Bauer
+#	Copyright (C) 2015-2025 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -59,7 +59,7 @@ if decode:
 			elif (state == "decoding"):
 				if line.startswith("------- END BASE64 "):
 					continue_read = False
-					expect = re.compile("------- END BASE64 len (?P<datalen>\d+) MD5 (?P<md5>[a-f0-9]{32}) -------").match(line)
+					expect = re.compile(r"------- END BASE64 len (?P<datalen>\d+) MD5 (?P<md5>[a-f0-9]{32}) -------").match(line)
 					if expect is not None:
 						expect = expect.groupdict()
 						expect["datalen"] = int(expect["datalen"])
@@ -73,7 +73,7 @@ if decode:
 						hashalg.update(decoded_data)
 						total_len += len(decoded_data)
 						sys.stdout.buffer.write(decoded_data)
-		
+
 		newdata = infile.read(blocklen_bytes)
 		if len(newdata) == 0:
 			break
@@ -99,5 +99,5 @@ else:
 		total_len += len(indata)
 		if len(indata) == 0:
 			break
-			
+
 	print("------- END BASE64 len %d MD5 %s -------" % (total_len, hashalg.hexdigest()))
