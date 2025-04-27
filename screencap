@@ -1,0 +1,130 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	screencap: Use ffmpeg to record the screen
+#	Copyright (C) 2025-2025 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import re
+import sys
+import functools
+import collections
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+class ScreenCapture():
+	CONFIG_PATH = "~/.config/jbin/screencap.json"
+	_OFFSET_RE = re.compile(r"\s*(?P<width>\d+)\s*x\s*(?P<height>\d+)\s*(\+\s*(?P<x>\d+)\s*\+\s*(?P<y>\d+)\s*)?")
+	_XRANDR_RE = re.compile(r"^(?P<name>[^\s]+) connected (?P<primary>primary )?\s*(?P<width>\d+)x(?P<height>\d+)\+(?P<x>\d+)\+(?P<y>\d+)", flags = re.MULTILINE)
+	_SizeOffset = collections.namedtuple("SizeOffset", [ "width", "height", "x", "y", "primary" ])
+
+	def __init__(self, args):
+		self._args = args
+
+	@functools.cached_property
+	def config(self):
+		try:
+			with open(os.path.expanduser(self.CONFIG_PATH)) as f:
+				return json.load(f)
+		except:
+			return { }
+
+	def parse_offset(self, rematch):
+		if rematch["x"] is None:
+			return self._SizeOffset(width = int(rematch["width"]), height = int(rematch["height"]), x = 0, y = 0, primary = None)
+		else:
+			return self._SizeOffset(width = int(rematch["width"]), height = int(rematch["height"]), x = int(rematch["x"]), y = int(rematch["y"]), primary = None)
+
+	@functools.cached_property
+	def xrandr_monitors(self):
+		result = { }
+		output = subprocess.check_output([ "xrandr" ]).decode("utf-8")
+		for rematch in self._XRANDR_RE.finditer(output):
+			result[rematch["name"]] = self._SizeOffset(width = int(rematch["width"]), height = int(rematch["height"]), x = int(rematch["x"]), y = int(rematch["y"]), primary = rematch["primary"] is not None)
+		return result
+
+	@functools.cached_property
+	def config_monitors(self):
+		result = { }
+		for (name, config) in self.config:
+			if (rematch := self._OFFSET_RE.fullmatch(config.get("source", ""))) is not None:
+				result[name] = self.parse_offset(rematch)
+		return result
+
+	@property
+	def primary_screen(self):
+		for size_offset in self.xrandr_monitors.values():
+			if size_offset.primary:
+				return size_offset
+		raise ValueError("No primary screen found.")
+
+	@functools.cached_property
+	def size_offset(self):
+		if self._args.source is None:
+			return self.primary_screen
+
+		if (rematch := self._OFFSET_RE.fullmatch(self._args.source)) is not None:
+			return self.parse_offset(rematch)
+
+		if self._args.source in self.xrandr_monitors:
+			return self.xrandr_monitors[self._args.source]
+
+		if self._args.source in self.config_monitors:
+			return self.config_monitors[self._args_source]
+
+		emsg = [ f"\"{self._args.source}\" is not a valid screen name." ]
+		if len(self.xrandr_monitors) == 0:
+			emsg.append("No xrandr screens were found.")
+		else:
+			emsg.append(f"Known screens are {', '.join(sorted(self.xrandr_monitors.keys()))}.")
+		if len(self.config_monitors) == 0:
+			emsg.append("No configuration file screen definitions were found.")
+		else:
+			emsg.append(f"Known configuration screens are {', '.join(sorted(self.config_monitors.keys()))}.")
+		raise ValueError(" ".join(emsg))
+
+	def run(self):
+		if (not self._args.force) and os.path.exists(self._args.output_file):
+			raise FileExistsError(f"Refusing to overwrite: {self._args.output_file}")
+		cmd = [ "ffmpeg" ]
+		cmd += [ "-y" ]
+		cmd += [ "-video_size", f"{self.size_offset.width}x{self.size_offset.height}" ]
+		cmd += [ "-framerate", "25" ]
+		cmd += [ "-f", "x11grab" ]
+		cmd += [ "-i", f":0.0+{self.size_offset.x},{self.size_offset.y}" ]
+		if self._args.capture_audio:
+			cmd += [ "-f", "pulse" ]
+			cmd += [ "-ac", "2" ]
+			cmd += [ "-i", "default" ]
+		cmd += [ "-vf", "setpts=N/FR/TB" ]
+		cmd += [ self._args.output_file ]
+		if self._args.verbose >= 1:
+			print(" ".join(cmd))
+		subprocess.call(cmd)
+
+parser = FriendlyArgumentParser(description = "Perform a screen capture.")
+parser.add_argument("-o", "--output-file", metavar = "filename", default = "screen_capture.mkv", help = "Record to this file. Defaults to %(default)s.")
+parser.add_argument("-a", "--capture-audio", action = "store_true", help = "Not only capture video, but audio as well.")
+parser.add_argument("-f", "--force", action = "store_true", help = "Overwrite output file if it already exists.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("source", nargs = "?", help = f"Screen source (offset and size). Can be either a specification like 1920x1080+1920+0 (i.e., WxH+X+Y or just WxH), a xrandr name (like \"DisplayPort-0\"), or an alias specified in {ScreenCapture.CONFIG_PATH}. Can be omitted and defaults to the primary screen.")
+args = parser.parse_args(sys.argv[1:])
+
+scap = ScreenCapture(args)
+scap.run()

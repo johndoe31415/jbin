@@ -716,7 +716,3 @@ yt-dlp -x --audio-format mp3 -o '%(playlist_index)02d - %(title)s.mp3' 'https://
 snap refresh --hold=forever     # Disable auto-update
 snap refresh                    # Trigger update
 snap refresh --unhold           # Make Snap annoying again
-
-## Record screen with ffmpeg
-#ffmpeg -video_size 1024x768 -framerate 25 -f x11grab -i :0.0+100,200 -f pulse -ac 2 -i default output.mkv
-ffmpeg -video_size 1024x768 -framerate 25 -f x11grab -i :0.0+0,0 -vf setpts=N/FR/TB output.mkv
