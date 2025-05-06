@@ -86,6 +86,9 @@ definitions = [
 			deb {variables['mirror']} {variables['release']} main contrib non-free
 			deb-src {variables['mirror']} {variables['release']} main contrib non-free
 
+			deb http://security.debian.org/debian-security {variables['release']}-security main
+			deb-src http://security.debian.org/debian-security {variables['release']}-security main
+
 			deb {variables['mirror']} {variables['release']}/updates main contrib non-free
 			deb-src {variables['mirror']} {variables['release']}/updates main contrib non-free
 
