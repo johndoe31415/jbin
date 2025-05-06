@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
-#	Copyright (C) 2018-2021 Johannes Bauer
+#	Copyright (C) 2018-2024 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -41,17 +41,17 @@ mac = result["mac"]
 
 if not args.temporary:
 	# Persist changes
-	filename = "/etc/systemd/network/01-netif-%s.link" % (new_if)
+	filename = f"/etc/systemd/network/01-netif-{args.new_ifname}.link"
 	if os.path.isfile(filename):
-		raise Exception("Already exists: %s" % (filename))
+		raise Exception(f"Already exists: {filename}")
 
 	with open(filename, "w") as f:
 		print("[Match]", file = f)
-		print("MACAddress=%s" % (mac), file = f)
+		print(f"MACAddress={mac}", file = f)
 		print("Type=!vlan bridge", file = f)
 		print(file = f)
 		print("[Link]", file = f)
-		print("Name=%s" % (new_if), file = f)
+		print("Name={args.new_ifname}", file = f)
 
 subprocess.check_call(["ip", "link", "set", args.old_ifname, "down" ])
 subprocess.check_call(["ip", "link", "set", args.old_ifname, "name", args.new_ifname ])
