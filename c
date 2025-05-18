@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	c: General-purpose scientific/cryptographic calculator
-#	Copyright (C) 2009-2023 Johannes Bauer
+#	Copyright (C) 2009-2025 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -700,6 +700,54 @@ def derfile2rsa(filename) -> FncDescription(category = "Cryptography", imports =
 	phin = (p - 1) * (q - 1)
 	gcdp1q1 = gcd(p - 1, q - 1)
 	return __RSAParams(p, q, n, phin, e, d, gcdp1q1)
+
+def modreduce(x: int, redpoly: int) -> FncDescription(category = "Cryptography"):
+	"""\
+	Perform modular reduction of a integer-represented polynomial x by its
+	reduction polynomial 'redpoly'."""
+	while x.bit_length() >= redpoly.bit_length():
+		shift = x.bit_length() - redpoly.bit_length()
+		x ^= redpoly << shift
+	return x
+
+def clmul(a: int, b: int, redpoly: int | None = None) -> FncDescription(category = "Cryptography"):
+	"""\
+	Perform carryless multiplication of two polynomials a * b (possibly mod
+	redpoly)."""
+	result = 0
+	if redpoly is not None:
+		a = modreduce(a, redpoly)
+		b = modreduce(b, redpoly)
+		for bit in range(b.bit_length()):
+			if (b >> bit) & 1:
+				result ^= a
+			a = a << 1
+			if a.bit_length() == redpoly.bit_length():
+				a ^= redpoly
+	else:
+		for bit in range(b.bit_length()):
+			if (b >> bit) & 1:
+				result ^= a << bit
+	return result
+
+def polypow(b: int, e: int, redpoly: int) -> FncDescription(category = "Cryptography"):
+	"""\
+	Perform modular exponentiation of a integer-represented base polynomial b
+	to its exponent e modulo the reduction polynomial 'redpoly'."""
+	result = 1
+	accu = b
+	for i in range(e.bit_length()):
+		if (e >> i) & 1:
+			result = clmul(result, accu, redpoly)
+		accu = clmul(accu, accu, redpoly)
+	return result
+
+def polyinv(x: int, redpoly: int) -> FncDescription(category = "Cryptography"):
+	"""\
+	Perform modular invertsion of a integer-represented polynomial x modulo its
+	reduction polynomial 'redpoly'."""
+	e = (1 << (redpoly.bit_length() - 1)) - 2
+	return polypow(x, e, redpoly)
 
 def ts2timet(ts) -> FncDescription(category = "Date/time"):
 	"""Converts a string UTC timestamp in ISO format to a time_t value."""
@@ -1635,6 +1683,17 @@ def testcases():
 		assert(approxeql(lambertW(10), 1.745528003))
 		assert(approxeql(lambertW(100), 3.385630140))
 
+	def crypto_testcases():
+		redpoly = sum(1 << e for e in [ 128, 7, 2, 1, 0 ])
+		assert(polypow(2, 99999, redpoly) == 0xb228f41304dfbb5fbbf967e7840da188)
+		assert(polyinv(0xb228f41304dfbb5fbbf967e7840da188, redpoly) == 0xdc9e366918f4f5a308c888b32772ef8c)
+		assert(clmul(0xb228f41304dfbb5fbbf967e7840da188, 0xdc9e366918f4f5a308c888b32772ef8c, redpoly) == 1)
+		assert(clmul(0x1f261959a037c4a31f72658f1d9235f3, 0x9140cbcc78847c2e683de32b4f09ff02, redpoly) == 0x47a6ff289d7a66f25189a3145555886e)
+		assert(modreduce(0, redpoly) == 0)
+		for i in range(128):
+			assert(modreduce(1 << i, redpoly) == 1 << i)
+		assert(modreduce(1 << 128, redpoly) == redpoly ^ (1 << 128))
+
 	lW_testcases()
 	unit_testcases()
 	ror_testcases()
@@ -1646,6 +1705,7 @@ def testcases():
 	isprime_testcases()
 	float_testcases()
 	disk_testcases()
+	crypto_testcases()
 	return "PASS"
 
 def __iter_functions():
