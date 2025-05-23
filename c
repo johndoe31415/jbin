@@ -1017,28 +1017,6 @@ def carray(data, linelength = 100) -> FncDescription(category = "Binary data man
 	wrapped[-1] += " };"
 	return "\n".join(wrapped)
 
-def bytes2int(data) -> FncDescription(category = "Binary data manipulation"):
-	"""Converts a byte data array into an integer."""
-	assert(isinstance(data, bytes))
-	return sum(c << (8 * index) for (index, c) in enumerate(data))
-
-def int2bytes(data, length = None) -> FncDescription(category = "Binary data manipulation"):
-	"""Converts an integer into a byte array."""
-	assert(isinstance(data, int))
-	result = [ ]
-	while ((length is None) and (data > 0)) or ((length is not None) and (length > 0)):
-		result.append(data & 0xff)
-		data >>= 8
-		if length is not None:
-			length -= 1
-	return bytes(result)
-
-def hexstr(value) -> FncDescription(category = "Binary data manipulation"):
-	"""Converts a integer value to a bytewise hex string."""
-	assert(isinstance(value, int))
-	assert(value >= 0)
-	return " ".join("%02x" % (c) for c in reversed(int2bytes(value)))
-
 def product(iteratable) -> FncDescription(category = "Misc", aliases = [ "prod" ]):
 	"""Returns the product of all values in the iteratable."""
 	value = 1
@@ -1046,7 +1024,7 @@ def product(iteratable) -> FncDescription(category = "Misc", aliases = [ "prod" 
 		value *= element
 	return value
 
-def spacing(length, count, endsincluded = False) -> FncDescription(category = "Misc"):
+def spacing(length: float, count: int, endsincluded: bool = False) -> FncDescription(category = "Misc"):
 	"""\
 	Spaces out points on a line evenly. Can choose if you want the ends to
 	be included or not."""
@@ -1058,19 +1036,24 @@ def spacing(length, count, endsincluded = False) -> FncDescription(category = "M
 		spacing = [ (distance * i) for i in range(count) ]
 	return spacing
 
-def inchfrac(mm, tolpercent = 1.5) -> FncDescription(category = "Misc"):
+def inchfrac(mm: float, min_error_percent: float = 1.5, max_denominator: int = 64) -> FncDescription(category = "Misc"):
 	"""\
 	Converts a millimeter length to a fractional length with the specified
 	tolerance."""
+	__InchFrac = collections.namedtuple("InchFrac", [ "value_mm", "approx_mm", "fraction", "full_inches", "fractional_inches", "error_percent", "error_absolute" ])
 	inches = mm / 25.4
-	tolerance = tolpercent / 100 * mm
+
 	denominator = 2
-	for i in range(10):
+	while True:
 		numerator = round(inches * denominator)
-		real = numerator / denominator * 25.4
-		error = abs(mm - real)
-		if (numerator != 0) and (error < tolerance):
-			return Fraction(numerator, denominator)
+		candidate_inches = numerator / denominator
+		error = (candidate_inches - inches) / inches
+		if (abs(error * 100) < min_error_percent) or (2 * denominator > max_denominator):
+			fraction = Fraction(numerator, denominator)
+			full_inches = fraction.numerator // fraction.denominator
+			fractional_inches = fraction - full_inches
+			approx_mm = float(fraction) * 25.4
+			return __InchFrac(value_mm = mm, approx_mm = approx_mm, fraction = fraction, full_inches = full_inches, fractional_inches = fractional_inches, error_percent = error * 100, error_absolute = approx_mm - mm)
 		denominator *= 2
 
 def inchfracs(mm) -> FncDescription(category = "Misc"):
