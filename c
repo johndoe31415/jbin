@@ -234,17 +234,20 @@ def frcformat(fraction, length = 20) -> FncDescription(category = "Floating poin
 	postcomma = "".join([ str(digit) for digit in digits ])
 	return "%s.%s" % (precomma, postcomma)
 
-def combine_arb_flt(exponent_bits, mantissa_bits, sign_bit, exponent, mantissa) -> FncDescription(category = "Floating point"):
+def combine_arb_flt(exponent_bits: int, mantissa_bits: int, sign_bit: int, exponent: int, mantissa: int) -> FncDescription(category = "Floating point"):
 	"""\
 	Combines an IEC-741 float value by assembling the different components into
 	one integer value."""
 	assert((sign_bit == 0) or (sign_bit == 1))
+	assert(0 <= exponent < (2 ** exponent_bits))
+	assert(0 <= mantissa < (2 ** mantissa_bits))
 	exponent += (2 ** (exponent_bits - 1)) - 1
+
 	value = (sign_bit << (exponent_bits + mantissa_bits)) | (exponent << mantissa_bits) | (mantissa << 0)
 	return value
 
 __FloatingPointValue = collections.namedtuple("FloatingPointValue", [ "value", "exponent_bits", "mantissa_bits", "sign_bit", "mantissa", "exponent", "combined" ])
-def encode_arb_flt(float_value, exponent_bits, mantissa_bits) -> FncDescription(category = "Floating point"):
+def encode_arb_flt(float_value: Fraction | float, exponent_bits: int, mantissa_bits: int) -> FncDescription(category = "Floating point"):
 	"""\
 	Represent a floating point value (float or str) in IEEE-741 representation
 	(normalized floating point)."""
@@ -282,7 +285,7 @@ def encode_arb_flt(float_value, exponent_bits, mantissa_bits) -> FncDescription(
 
 	# Do not encode the leading and trailing bit
 	mantissa = 0
-	for bit in mantissa_list[ 1 : -1]:
+	for bit in mantissa_list[1 : -1]:
 		mantissa = (mantissa << 1) | bit
 
 	# Round up if last bit 1
@@ -292,7 +295,7 @@ def encode_arb_flt(float_value, exponent_bits, mantissa_bits) -> FncDescription(
 	combined = combine_arb_flt(exponent_bits, mantissa_bits, sign_bit, exponent, mantissa)
 	return __FloatingPointValue(value = original_float_value, exponent_bits = exponent_bits, mantissa_bits = mantissa_bits, sign_bit = sign_bit, mantissa = mantissa, exponent = exponent, combined = combined)
 
-def decode_arb_flt(combined, exponent_bits, mantissa_bits) -> FncDescription(category = "Floating point"):
+def decode_arb_flt(combined: int, exponent_bits: int, mantissa_bits: int) -> FncDescription(category = "Floating point"):
 	"""Decodes an arbitrary float value (int -> Fraction)"""
 	assert(isinstance(combined, int))
 	assert(isinstance(exponent_bits, int))
@@ -343,8 +346,8 @@ def bo(x, bytecnt = 0) -> FncDescription(category = "Endianness"):
 	x = sum([ splitint[len(splitint) - 1 - i] * (256 ** i) for i in range(len(splitint)) ])
 	return x
 
-def bitmask(lo, hi) -> FncDescription(category = "Bit operations", aliases = [ "bitlen" ]):
-	"""Returns a bitmask that includes bits lo:hi (both inclusive)."""
+def bitmask(lo: int, hi: int) -> FncDescription(category = "Bit operations"):
+	"""Returns a bitmask that includes bits [ lo : hi ] (both inclusive)."""
 	(lo, hi) = (min(lo, hi), max(lo, hi))
 	length = hi - lo + 1
 	mask = (1 << length) - 1
@@ -355,19 +358,6 @@ def highbit(x) -> FncDescription(category = "Bit operations", aliases = [ "bitle
 	assert(isinstance(x, int))
 	assert(x > 0)
 	return x.bit_length() - 1
-
-def bitcnt(x) -> FncDescription(category = "Bit operations", aliases = [ "bitcount", "hweight" ]):
-	"""\
-	Returns the number of set bits in the given value which is also known as
-	the Hamming Weight of a number."""
-	assert(isinstance(x, int))
-	assert(x >= 0)
-	cnt = 0
-	while x > 0:
-		if (x & 1) == 1:
-			cnt += 1
-		x >>= 1
-	return cnt
 
 def parity(x) -> FncDescription(category = "Bit operations"):
 	"""Returns the parity bit of a given value."""
@@ -776,12 +766,12 @@ def digsum(value, base = 10) -> FncDescription(category = "Integer representatio
 		value //= base
 	return dsum
 
-def uint(value, bits) -> FncDescription(category = "Integer representation"):
+def uint(value: int, bits: int) -> FncDescription(category = "Integer representation"):
 	"""Converts a value to an unsigned integer of the specified bitlength."""
 	mask = (1 << bits) - 1
 	return value & mask
 
-def sint(value, bits) -> FncDescription(category = "Integer representation", order = "int00"):
+def sint(value: int, bits: int) -> FncDescription(category = "Integer representation", order = "int00"):
 	"""\
 	Converts a value to a signed integer of the specified bitlength using twos
 	complements notation."""
@@ -1310,29 +1300,6 @@ def urlextract(uri) -> FncDescription(category = "String functions"):
 		for value in values:
 			print("%s %s" % (key, value))
 
-def pwgen_bits(bitcnt, ambiguous = False, special = False) -> FncDescription(category = "Misc"):
-	"""\
-	Generates a password with at least n bits. Can include special
-	characters (to create shorter password) and can remove ambiguous characters
-	as well (such as O and 0 or l and 1)."""
-	bytecnt = (bitcnt + 7) // 8
-	data = os.urandom(bytecnt)
-	data_int = bytes2int(data)
-	if ambiguous:
-		alphabet = string.ascii_uppercase + string.ascii_lowercase + string.digits
-	else:
-		alphabet = "ABCDEFHJLMNPQRSTUVWXYZabcdefghijmnpqrstwxyz2345789"
-	if special:
-		if ambiguous:
-			alphabet += "+-_*.!()[]%$"
-		else:
-			alphabet += "+-_*.!%$"
-	password = ""
-	while data_int > 0:
-		(data_int, charno) = divmod(data_int, len(alphabet))
-		password += alphabet[charno]
-	return password
-
 def cvalue(value) -> FncDescription(category = "Misc"):
 	"""\
 	Takes a component input value and converts it to its pedant. E.g., 104
@@ -1347,6 +1314,7 @@ def cvalue(value) -> FncDescription(category = "Misc"):
 def unit(value, fromunit, tounit) -> FncDescription(category = "Misc"):
 	"""Converts values from one unit to another."""
 	unit_classes = [
+		# Torque
 		{
 			"Nm":		1,
 			"Ncm":		100,
@@ -1359,6 +1327,8 @@ def unit(value, fromunit, tounit) -> FncDescription(category = "Misc"):
 			"lbin":		8.85074,
 			"mNm":		1000,
 		},
+
+		# Energy
 		{
 			"J":		1,
 			"Wh":		1 / 3600,
@@ -1366,33 +1336,50 @@ def unit(value, fromunit, tounit) -> FncDescription(category = "Misc"):
 			"cal":		1 / 4.1868,
 			"kcal":		1 / 4.1868 / 1000,
 		},
+
+		# Velocity
 		{
 			"m/s":		1,
+			"km/s":		0.001,
 			"km/h":		3.6,
 			"ft/s":		1000 / 25.4 / 12,
 			"mph":		3.6 / 1.609344,
+			"c":		1 / 299_792_458,
 		},
+
+		# Length
 		{
 			"mm":		1000,
 			"cm":		100,
+			"dm":		10,
 			"m":		1,
 			"km":		0.001,
 			"in":		1000 / 25.4,
 			"ft":		1000 / 25.4 / 12,
 			"nm":		1 / 1852,
 			"mile":		1 / 1609.34,
+			"AU":		1 / 149597870700,
+			"PC":		1 / 30856775814671900,
 		},
+
+		# Flow
 		{
 			"m³/h":		1,
+			"m³/hr":	1,
 			"ft³/min":	1 / ((0.3048 ** 3) * 60),
 			"cfm":		1 / ((0.3048 ** 3) * 60),
 		},
+
+		# Time
 		{
 			"s":		1,
-			"hr":		3600,
-			"d":		86400,
-			"yr":		86400 * 365.25,
+			"h":		1 / 3600,
+			"hr":		1 / 3600,
+			"d":		1 / 86400,
+			"yr":		1 / (86400 * 365.25),
 		},
+
+		# Pressure
 		{
 			"bar":		1,
 			"mbar":		1000,
@@ -1407,8 +1394,12 @@ def unit(value, fromunit, tounit) -> FncDescription(category = "Misc"):
 			"mmHg":		750.06375541921,
 			"mmH2O":	10197.162129779,
 		},
+
+		# Weight
 		{
+			"ton":		0.001,
 			"kg":		1,
+			"g":		1000,
 			"lbs":		2.20462,
 		},
 	]
@@ -1431,14 +1422,6 @@ def unit(value, fromunit, tounit) -> FncDescription(category = "Misc"):
 			raise Exception("Both units %s unknown." % (", ".join(sorted(list(unknown_unit)))))
 
 	return value / eqclass[fromunit] * eqclass[tounit]
-
-def dB(ratio) -> FncDescription(category = "Misc"):
-	"""Converts a ratio to dB."""
-	return log10(ratio) * 10
-
-def idB(dbvalue) -> FncDescription(category = "Misc"):
-	"""Converts a ratio in dB to its plain value."""
-	return 10 ** (dbvalue / 10)
 
 def sci(value, significant_digits = 3) -> FncDescription(category = "Misc"):
 	"""Rounds a value and shows it in scientific notation."""
