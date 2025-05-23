@@ -1,0 +1,87 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	keycache: Simple key/value cache
+#	Copyright (C) 2025-2025 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import sys
+import sqlite3
+import json
+import contextlib
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+class KeyCache():
+	def __init__(self, args):
+		self._args = args
+
+	@contextlib.contextmanager
+	def _dbconn(self):
+		filename = os.path.expanduser("~/.cache/jbin/keycache.sqlite3")
+		with contextlib.suppress(FileExistsError):
+			os.makedirs(os.path.dirname(filename))
+		conn = sqlite3.connect(filename)
+		cursor = conn.cursor()
+
+		with contextlib.suppress(sqlite3.OperationalError):
+			cursor.execute("""CREATE TABLE entries (
+				key varchar PRIMARY KEY,
+				value varchar NOT NULL
+			);""")
+
+		yield cursor
+		cursor.close()
+		conn.commit()
+		conn.close()
+
+	def _getkey(self, key: str):
+		with self._dbconn() as cursor:
+			return cursor.execute("SELECT value FROM entries WHERE key = ?;", (key, )).fetchone()
+
+	def _storekey(self, key: str, value: str):
+		with self._dbconn() as cursor:
+			if value == "":
+				cursor.execute("DELETE FROM entries WHERE key = ?;", (key, ))
+			else:
+				try:
+					cursor.execute("INSERT INTO entries (key, value) VALUES (?, ?);", (key, value))
+				except sqlite3.IntegrityError:
+					cursor.execute("UPDATE entries SET value = ? WHERE key = ?;", (value, key))
+
+	def run(self):
+		key = self._args.key
+		if self._args.json_key:
+			key = json.dumps(json.loads(key), sort_keys = True)
+		if self._args.value is None:
+			value = self._getkey(key)
+			if value is None:
+				sys.exit(1)
+			else:
+				print(value[0])
+		else:
+			return self._storekey(key, self._args.value)
+
+parser = FriendlyArgumentParser(description = "Cache key/value pairs")
+parser.add_argument("-j", "--json-key", action = "store_true", help = "Interpret the given key as JSON data.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Increase output verbosity.")
+parser.add_argument("key", help = "Key to query or store data into.")
+parser.add_argument("value", nargs = "?", help = "Value to store for given key.")
+args = parser.parse_args(sys.argv[1:])
+
+KeyCache(args).run()
