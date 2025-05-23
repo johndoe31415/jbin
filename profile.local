@@ -146,6 +146,7 @@ alias lsa="/bin/ls --color=always -p -h -l -A --time-style=+\"  $TIMESTYLE\""
 alias date="/bin/date +\"$TIMESTYLE\""
 alias cdl='cd "$(readlink -f "`pwd`")"'
 alias cdmtp='cd /run/user/${UID}/gvfs/mtp*'
+alias libdir='export LD_LIBRARY_PATH=$(pwd); export PS1="<lib> ${PS1}"'
 
 # Export locale
 DFL_LOCALE="de_DE.UTF-8"
