@@ -34,6 +34,7 @@ import base64
 import itertools
 import string
 import bisect
+import ipaddress
 from random import randint, randrange
 from math import sqrt, sin, cos, tan, atan2, pi, e, exp, factorial, log, log10, ceil, floor
 from fractions import Fraction
@@ -811,13 +812,15 @@ def uint32(value) -> FncDescription(category = "Integer representation"):
 	"""Converts a value to an unsigned integer of 32 bits."""
 	return uint(value, 32)
 
-def cuint128(value) -> FncDescription(category = "Integer representation"):
+def inthilo(value: int, bit_length: int = 128) -> FncDescription(category = "Integer representation"):
 	"""\
-	Converts a integer value of 128 bit to two 64-bit integers (high and low
-	word)."""
-	assert(value.bit_length() <= 128)
-	high = (value >> 64) & ((1 << 64) - 1)
-	low = (value >> 0) & ((1 << 64) - 1)
+	Converts a integer value of bit_length bit to two (bit_length/2)-bit
+	integers (high and low word). By default, bit_length is 128."""
+	assert(value.bit_length() <= bit_length)
+	assert((bit_length % 2) == 0)
+	width = bit_length // 2
+	high = (value >> width) & ((1 << width) - 1)
+	low = (value >> 0) & ((1 << width) - 1)
 	return "0x%x, 0x%x" % (high, low)
 
 def primesbelow(n) -> FncDescription(category = "Prime numbers"):
@@ -1459,7 +1462,7 @@ def linint(x1, y1, x2, y2, x) -> FncDescription(category = "Misc"):
 	t = (y2 - y1) / (x2 - x1)
 	return y1 + (x - x1) * t
 
-def area_at_ratio(area, ratio) -> FncDescription(category = "Misc"):
+def area_at_ratio(area: float, ratio: float) -> FncDescription(category = "Misc"):
 	"""\
 	Determines the width and height of a rectangle when the area of the
 	rectangle and the ratio of the two sides is given."""
@@ -1477,32 +1480,22 @@ def lambertW(x) -> FncDescription(category = "Numerical mathematics", aliases = 
 		wj = wj_new
 	return wj_new
 
-def ip2int(addr) -> FncDescription(category = "Network"):
+def ip2int(addr: str) -> FncDescription(category = "Network"):
 	"""Converts an IPv4 address to an integer value."""
-	return int.from_bytes(bytes(int(value) for value in addr.split(".")), byteorder = "big")
+	return int(ipaddress.ip_address(addr))
 
-def int2ip(int_addr) -> FncDescription(category = "Network"):
-	"""Converts an IPv4 integer into an address."""
-	return ".".join("%d" % (x) for x in int.to_bytes(int_addr, byteorder = "big", length = 4))
+def int2ip(int_addr: int) -> FncDescription(category = "Network"):
+	"""Converts an IPv4/v6 integer into an address."""
+	return str(ipaddress.ip_address(int_addr))
 
-def cidr(addr) -> FncDescription(category = "Network"):
-	"""Calculates a CIDRv4 address and subnet."""
-	CIDRAddress = collections.namedtuple("CIDRAddress", [ "ip", "block", "network_ip", "netmask_ip", "first_ip", "last_ip", "broadcast_ip", "host_count" ])
-	if "/" in addr:
-		(ip, blocksize) = addr.split("/")
-	else:
-		(ip, blocksize) = (addr, 32)
-	blocksize = int(blocksize)
-	ip_int = ip2int(ip)
-	mask_int = ((1 << blocksize) - 1) << (32 - blocksize)
-	network_ip_int = ip_int & mask_int
-	first_ip = network_ip_int + 1
-	last_ip = network_ip_int + (1 << (32 - blocksize)) - 2
-	broadcast_ip = last_ip + 1
-	host_count = last_ip - first_ip + 1
+def cidr(addr: str) -> FncDescription(category = "Network"):
+	"""Calculates a CIDRv4/v6 address and subnet."""
+	net = ipaddress.ip_network(addr, strict = False)
+	host_count = net.num_addresses - 2
 	if host_count < 0:
 		host_count = 0
-	return CIDRAddress(ip = int2ip(ip_int), block = blocksize, network_ip = int2ip(network_ip_int), netmask_ip = int2ip(mask_int), first_ip = int2ip(first_ip), last_ip = int2ip(last_ip), broadcast_ip = int2ip(broadcast_ip), host_count = host_count)
+	__CIDRAddress = collections.namedtuple("CIDRAddress", [ "ip", "block", "netmask_ip", "first_ip", "last_ip", "broadcast_ip", "host_count" ])
+	return __CIDRAddress(ip = str(net.network_address), block = net.prefixlen, netmask_ip = str(net.netmask), first_ip = str(net[1]) if (host_count > 0) else None, last_ip = str(net[-2]) if (host_count > 0) else None, broadcast_ip = str(net.broadcast_address), host_count = host_count)
 
 def testcases():
 	"""Runs several self-checks on the module."""
