@@ -896,15 +896,16 @@ def divisors(n) -> FncDescription(category = "Prime numbers"):
 
 	return sorted(list(divisors))
 
-def totient(n):
+def totient(n: int) -> FncDescription(category = "Number theoretic functions"):
 	"""Calculates the Euler Totient function of a given number."""
-	if n == 0: return 1
+	if n == 0:
+		return 1
 	tot = 1
 	for p, exp in factor(n).items():
 		tot *= (p - 1) *  (p ** (exp - 1))
 	return tot
 
-def lba2dd(lba, lbablocksize = 512, ddblocksize = 1024 * 1024, ddcount = 500) -> FncDescription(category = "Disk size operations"):
+def lba2dd(lba: int, lbablocksize: int = 512, ddblocksize: int = 1024 * 1024, ddcount: int = 500) -> FncDescription(category = "Disk size operations"):
 	"""\
 	Gives coordinates for dd so that the given LBA block is exactly centered in
 	the count window."""
@@ -916,10 +917,10 @@ def lba2dd(lba, lbablocksize = 512, ddblocksize = 1024 * 1024, ddcount = 500) ->
 		ddskip = 0
 	return DDParams(ddblocksize = ddblocksize, ddread_skip = ddskip, ddwrite_seek = ddskip, ddcount = ddcount)
 
-def chs2lba(hpc, spt, c, h, s) -> FncDescription(category = "Disk size operations"):
+def chs2lba(hpc: int, spt: int, c: int, h: int, s: int) -> FncDescription(category = "Disk size operations"):
 	"""\
 	Converts a position (c, h, s) on a disk with geometry (hpc, spt) to a
-	logical block address. HPT stands for heads/track and SPT for
+	logical block address. HPC stands for heads/cylinder and SPT for
 	sectors/track."""
 	assert(isinstance(hpc, int) and (hpc > 0))
 	assert(isinstance(spt, int) and (spt > 0))
@@ -928,19 +929,19 @@ def chs2lba(hpc, spt, c, h, s) -> FncDescription(category = "Disk size operation
 	assert(isinstance(s, int) and (s >= 0))
 	return (((c * hpc) + h) * spt) + s - 1
 
-def chs2pos(hpc, spt, c, h, s, secsize = 512) -> FncDescription(category = "Disk size operations"):
+def chs2pos(hpc: int, spt: int, c: int, h: int, s: int, secsize: int = 512) -> FncDescription(category = "Disk size operations"):
 	"""\
 	Converts a position (c, h, s) on a disk with geometry (hpc, spt, secsize)
-	to a byte position on disk. HPT stands for heads/track and SPT for
+	to a byte position on disk. HPC stands for heads/cylinder and SPT for
 	sectors/track, sector size defaults to 512 bytes/sector."""
 	assert(isinstance(secsize, int) and (secsize > 0))
 	return secsize * chs2lba(hpc, spt, c, h, s)
 
-def ddblocksize(size) -> FncDescription(category = "Disk size operations"):
+def ddblocksize(size: int) -> FncDescription(category = "Disk size operations"):
 	"""\
 	Convert a size in bytes to a block size and block count value that dd
 	will accept. Block size will not exceed 1 MiB."""
-	DDParams = collections.namedtuple("DDParams", [ "blocksize", "count" ])
+	__DDParams = collections.namedtuple("DDParams", [ "blocksize", "count" ])
 	blocksize = 1
 	count = size
 	while ((count % 2) == 0) and (blocksize < (1024 * 1024)):
@@ -950,42 +951,25 @@ def ddblocksize(size) -> FncDescription(category = "Disk size operations"):
 		blocksize = "%dM" % (blocksize // (1024 * 1024))
 	elif (blocksize % 1024) == 0:
 		blocksize = "%dk" % (blocksize // (1024))
-	return DDParams(blocksize = blocksize, count = count)
+	return __DDParams(blocksize = blocksize, count = count)
 
-def ahex2int(ahex) -> FncDescription(category = "Binary data manipulation"):
-	"""\
-	Converts an ASCII hex value (i.e. one where a = 0, b = 1, c = 2, ...,
-	p = 15 to an integer value."""
-	alphabet = "abcdefghijklmnop"
-	ahex = ahex.lower()
-	value = 0
-	for char in ahex:
-		nibble = alphabet.index(char)
-		value = (value << 4) | nibble
-	return value
-
-def xor(x, y) -> FncDescription(category = "Binary data manipulation"):
+def xor(x: bytes, y: bytes) -> FncDescription(category = "Binary data manipulation"):
 	"""Perform XOR of two byte arrays."""
 	return bytes(cx ^ cy for (cx, cy) in zip(x, y))
 
-def bytes2hex(data) -> FncDescription(category = "Binary data manipulation"):
-	"""Converts a byte data array to a hex string."""
-	assert(isinstance(data, bytes))
-	return "".join("%02x" % (c) for c in data)
-
-def filetohex(filename) -> FncDescription(category = "Binary data manipulation"):
+def filetohex(filename: str) -> FncDescription(category = "Binary data manipulation"):
 	"""Reads a file in and dumps the hexadecimal string."""
 	return bytes2hex(open(filename, "rb").read())
 
-def b64enc(data) -> FncDescription(category = "Binary data manipulation"):
+def b64enc(data: bytes) -> FncDescription(category = "Binary data manipulation"):
 	"""Performs base64 encoding on the given data."""
 	return base64.b64encode(data).decode("utf-8")
 
-def b64dec(data) -> FncDescription(category = "Binary data manipulation"):
+def b64dec(data: str) -> FncDescription(category = "Binary data manipulation"):
 	"""Performs base64 decoding on the given data."""
 	return base64.b64decode(data.encode("utf-8"))
 
-def b64uenc(data) -> FncDescription(category = "Binary data manipulation"):
+def b64uenc(data: bytes) -> FncDescription(category = "Binary data manipulation"):
 	"""Performs base64url encoding on the given data."""
 	b64data = base64.b64encode(data).decode("utf-8")
 	b64data = b64data.rstrip("=")
@@ -993,7 +977,7 @@ def b64uenc(data) -> FncDescription(category = "Binary data manipulation"):
 	b64data = b64data.replace("/", "_")
 	return b64data
 
-def b64udec(data) -> FncDescription(category = "Binary data manipulation"):
+def b64udec(data: str) -> FncDescription(category = "Binary data manipulation"):
 	"""Performs base64url decoding on the given data."""
 	data = data.replace("-", "+")
 	data = data.replace("_", "/")
@@ -1003,11 +987,11 @@ def b64udec(data) -> FncDescription(category = "Binary data manipulation"):
 		data += ("=" * (4 - (len(data) % 4)))
 	return base64.b64decode(data.encode("utf-8"))
 
-def binout(data) -> FncDescription(category = "Binary data manipulation"):
+def binout(data: bytes) -> FncDescription(category = "Binary data manipulation"):
 	"""Write binary data directly to stdout."""
 	sys.stdout.buffer.write(data)
 
-def carray(data, linelength = 100) -> FncDescription(category = "Binary data manipulation"):
+def carray(data: bytes, linelength: int = 100) -> FncDescription(category = "Binary data manipulation"):
 	"""Formats a chunk of bytes data so it can be used as a C array."""
 	assert(isinstance(data, bytes))
 	assert(isinstance(linelength, int))
