@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	audioinfo: Analyze audio data
-#	Copyright (C) 2022-2022 Johannes Bauer
+#	Copyright (C) 2022-2025 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -23,6 +23,7 @@
 import sys
 import json
 import os
+import re
 import subprocess
 import tempfile
 from FriendlyArgumentParser import FriendlyArgumentParser
@@ -43,8 +44,13 @@ class AudioAnalyzer():
 		]
 		proc = subprocess.run(cmd, capture_output = True)
 		stderr = proc.stderr.decode()
-		offset = stderr.find("\n{\n")
-		json_data = json.loads(stderr[offset:])
+
+		# This is complete dogshit but ffmpeg interleaves the JSON output we
+		# want with garbage information. When turning down -loglevel, the JSON
+		# is omitted as well. Output behavior has also changed across ffmpeg
+		# versions, causing this script to break. Pure, distilled dogshit.
+		json_text = re.search("^({.*^})", stderr, flags = re.DOTALL | re.MULTILINE)[1]
+		json_data = json.loads(json_text)
 		lufs = float(json_data['input_i'])
 		gain = self._args.target_lufs - lufs
 		print(f"{shortname}: {lufs:.1f} LUFS, gain {gain:+.1f} dB")
