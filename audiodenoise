@@ -40,7 +40,6 @@ class AudioDenoiser():
 	def _run_sox(self, input_filename: str, noise_filename: str, output_filename: str):
 		# 0.5 is default, more is more aggressive (more artifacts)
 		noise_reduction_value = self._score_scale(0.05, 0.25)
-		print(noise_reduction_value)
 		with tempfile.NamedTemporaryFile() as profile:
 			subprocess.run([ "sox", noise_filename, "-n", "noiseprof", profile.name ], check = True, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
 			subprocess.run([ "sox", input_filename, output_filename, "noisered", profile.name, str(noise_reduction_value) ], check = True, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
