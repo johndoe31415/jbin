@@ -23,7 +23,7 @@
 import time
 import datetime
 import sys
-import signal
+import select
 import subprocess
 from FriendlyArgumentParser import FriendlyArgumentParser
 
@@ -71,19 +71,14 @@ class StopWatch():
 
 	@staticmethod
 	def _input_timeout(prompt, timeout_secs):
-		class TimeExpiredException(Exception): pass
-
-		def raise_exception(signum, frame):
-			raise TimeExpiredException()
-
-		try:
-			signal.signal(signal.SIGALRM, raise_exception)
-			signal.alarm(timeout_secs)
-			result = input(prompt)
-			signal.alarm(0)
-		except TimeExpiredException:
-			result = None
-		return result
+		sys.stdout.write(prompt)
+		sys.stdout.flush()
+		(rlist, wlist, xlist) = select.select([ 0 ], [ ], [ ], timeout_secs)
+		if len(rlist) > 0:
+			# Have data to read
+			return input()
+		else:
+			return None
 
 	def _play_notification(self):
 		subprocess.Popen([ "mpv", self._args.notification_sound ], stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
