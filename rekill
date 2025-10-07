@@ -66,7 +66,7 @@ if not args.force:
 	print("Killing %d processes:" % (len(kill_list)))
 	for kill_entry in kill_list:
 		print(f"{kill_entry['pid']:7d} {kill_entry['cmdline']}")
-	yn = input("Proceed (y/n)? ").lower()
+	yn = input(f"Signalling {len(kill_list)} processes with signal {args.signal}. Proceed (y/n)? ").lower()
 	if yn != "y":
 		print("Aborted.")
 		sys.exit(1)
