@@ -76,7 +76,7 @@ definitions = [
 			("buster", "7'2019"),
 			("bullseye", "8'2021"),
 			("bookworm", "6'2023"),
-#			("trixie", "N/A"),
+			("trixie", "9'2025"),
 #			("forky", "N/A"),
 		],
 		"mirrors": [
