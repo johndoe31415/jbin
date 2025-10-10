@@ -1,0 +1,13 @@
+[DEFAULT]
+backend = systemd
+bantime  = 6h
+findtime  = 30min
+maxretry = 3
+
+[sshd]
+enabled = true
+
+[postfix]
+mode = aggressive
+enabled = true
+journalmatch = _SYSTEMD_UNIT=postfix@-.service
