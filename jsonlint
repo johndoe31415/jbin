@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	jsonlint: Pretty-print JSON data
-#	Copyright (C) 2019-2023 Johannes Bauer
+#	Copyright (C) 2019-2025 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -25,27 +25,43 @@ import sys
 import collections
 from FriendlyArgumentParser import FriendlyArgumentParser
 
+class JSONLinter():
+	def __init__(self, args):
+		self._args = args
+
+	def _lint_data(self, bytes_data: bytes):
+		data = json.loads(bytes_data, object_pairs_hook = collections.OrderedDict)
+
+		if self._args.output_format == "pretty":
+			text = json.dumps(data, indent = 4 if self._args.use_spaces else "\t", sort_keys = self._args.sort_keys == "alphabetical", ensure_ascii = not self._args.allow_unicode)
+			print(text)
+		elif self._args.output_format == "oneline":
+			print(json.dumps(data, sort_keys = self._args.sort_keys == "alphabetical"), ensure_ascii = not self._args.allow_unicode)
+		elif self._args.output_format == "brief":
+			print(json.dumps(data, separators = (",", ":"), sort_keys = self._args.sort_keys == "alphabetical"), ensure_ascii = not self._args.allow_unicode)
+		else:
+			raise NotImplementedError(self._args.output_format)
+
+	def _lint_file(self, filename: str):
+		with open(filename, "rb") as f:
+			data = f.read()
+		self._lint_data(data)
+
+	def run(self):
+		if len(self._args.filename) == 0:
+			# Read from stdin
+			self._lint_data(sys.stdin.read())
+		else:
+			# Lint files
+			for filename in self._args.filename:
+				self._lint_file(filename)
+
 parser = FriendlyArgumentParser(description = "Format a JSON file nicely.")
 parser.add_argument("-u", "--allow-unicode", action = "store_true", help = "Do not force ASCII-only output, but allow unicode characters as well.")
 parser.add_argument("-S", "--use-spaces", action = "store_true", help = "Use spaces instead of tabs for indentation. Only has an effect when the 'pretty' output format is chosen.")
 parser.add_argument("-s", "--sort-keys", choices = [ "alphabetical", "keep" ], default = "keep", help = "Sort the keys of dicts in the described fashion. Can be one of %(choices)s, defaults to %(default)s.")
 parser.add_argument("-o", "--output-format", choices = [ "pretty", "oneline", "brief" ], default = "pretty", help = "Show the output in the described fashion. Can be one of %(choices)s, defaults to %(default)s.")
-parser.add_argument("filename", metavar = "filename", nargs = "?", help = "Lint this filename. If omitted, read from stdin.")
+parser.add_argument("filename", metavar = "filename", nargs = "*", help = "Lint these filename(s). If omitted, read from stdin.")
 args = parser.parse_args(sys.argv[1:])
 
-if args.filename is not None:
-	with open(args.filename) as f:
-		data = f.read()
-else:
-	data = sys.stdin.read()
-data = json.loads(data, object_pairs_hook = collections.OrderedDict)
-
-if args.output_format == "pretty":
-	text = json.dumps(data, indent = 4 if args.use_spaces else "\t", sort_keys = args.sort_keys == "alphabetical", ensure_ascii = not args.allow_unicode)
-	print(text)
-elif args.output_format == "oneline":
-	print(json.dumps(data, sort_keys = args.sort_keys == "alphabetical"), ensure_ascii = not args.allow_unicode)
-elif args.output_format == "brief":
-	print(json.dumps(data, separators = (",", ":"), sort_keys = args.sort_keys == "alphabetical"), ensure_ascii = not args.allow_unicode)
-else:
-	raise NotImplementedError(args.output_format)
+JSONLinter(args).run()
