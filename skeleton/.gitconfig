@@ -1,0 +1,13 @@
+[user]
+#name = Johannes Bauer
+#email = joe@johannes-bauer.com
+#signingkey = 6F95AD475AEC5FEB71C4C640FCBD146DF6FF8FA3
+
+[init]
+defaultBranch = main
+
+[commit]
+#gpgsign = true
+
+[pull]
+rebase = false
