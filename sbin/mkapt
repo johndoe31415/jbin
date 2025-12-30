@@ -46,6 +46,8 @@ definitions = [
 			("noble", "2024.04"),
 			("oracular", "2024.10"),
 			("plucky", "2025.04"),
+			("questing", "2025.10"),
+#			("resolute", "2026.04"),
 		],
 		"mirrors": [
 			"http://ftp.halifax.rwth-aachen.de/ubuntu/",
