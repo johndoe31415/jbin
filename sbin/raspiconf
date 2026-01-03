@@ -1,0 +1,34 @@
+#!/bin/bash
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	raspiconf: Create a headless SSH Raspberry Pi configuration
+#	Copyright (C) 2025-2025 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+if [ ! -d "$1" ]; then
+	echo "$0 [bootfs mount dir]"
+	exit 1
+fi
+
+
+BOOTFS="${1}"
+touch "${BOOTFS}/ssh"
+
+read -p "Username: " USERNAME
+PASSWD=`openssl passwd -6 -noverify`
+echo "${USERNAME}:${PASSWD}" >"${BOOTFS}/userconf"
