@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+import sys
+import os
+import subprocess
+
+if len(sys.argv) != 2:
+	print(f"{sys.argv[0]} [directory]", file = sys.stderr)
+	sys.exit(1)
+
+path = sys.argv[1]
+if path == "/":
+	unit_name = "fstrim"
+else:
+	unit_name = "fstrim-{os.path.dirname(path)}"
+
+service_filename = f"/etc/systemd/system/{unit_name}.service"
+timer_filename = f"/etc/systemd/system/{unit_name}.timer"
+with open(service_filename, "w") as f:
+	print("[Unit]", file = f)
+	print(f"Description=Perform fstrim on {path}", file = f)
+	print(file = f)
+	print("[Service]", file = f)
+	print("Type=simple", file = f)
+	print(f"ExecStart=/usr/sbin/fstrim -v {path}", file = f)
+
+with open(timer_filename, "w") as f:
+	print("[Unit]", file = f)
+	print(f"Description=Perform fstrim on {path} every day", file = f)
+	print(file = f)
+	print("[Timer]", file = f)
+	print("OnUnitActiveSec=1d", file = f)
+	print("AccuracySec=1h", file = f)
+	print("Persistent=true", file = f)
+	print(file = f)
+	print("[Install]", file = f)
+	print("WantedBy=timers.target", file = f)
+
+os.chmod(service_filename, 0o644)
+os.chmod(timer_filename, 0o644)
+
+subprocess.check_call([ "systemctl", "daemon-reload" ])
+subprocess.check_call([ "systemctl", "enable", f"{unit_name}.timer" ])
+subprocess.check_call([ "systemctl", "start", f"{unit_name}.timer" ])
