@@ -22,28 +22,35 @@
 
 LOGFILE="${1}"
 TEMPFILE="${1}_dmesg.tmp"
-if [ "$LOGFILE" != "" ] && [ -f "${LOGFILE}" ]; then
-	echo "${LOGFILE} exists."
+
+if [ -f "${TEMPFILE}" ]; then
+	echo "Temporary file ${TEMPFILE} exists, remove before logging to file."
 	exit 1
+fi
+
+if [ "$LOGFILE" != "" ] && [ -f "${LOGFILE}" ]; then
+	read -p "${TEMPFILE} exists, append (y/n)? " yn
+	if [ "$yn" != "y" ] && [ "$yn" != "Y" ]; then
+		echo "Aborting."
+		exit 1
+	fi
 fi
 
 if [ "$LOGFILE" == "" ]; then
 	echo "Will not log to file."
-fi
-
-if [ -f "${TEMPFILE}" ]; then
-	echo "${TEMPFILE} exists."
-	exit 1
+else
+	echo "Will log to file: ${LOGFILE}"
 fi
 
 while true; do
-	dmesg -c > "${TEMPFILE}"
-	lines=`wc -l < "${TEMPFILE}"`
+	dmesg -c >"${TEMPFILE}"
+	lines=`wc -l <"${TEMPFILE}"`
 	if [ "$lines" != "0" ]; then
-		datum=`/bin/date +'%Y-%m-%d %H:%M:%S'`
-		cat "${TEMPFILE}" | awk '{print "'"${datum}"' " $0}'
+		TIMESTAMP=`/bin/date +'%Y-%m-%d %H:%M:%S'`
+		cat "${TEMPFILE}" | awk '{print "'"${TIMESTAMP}"' " $0}'
 		if [ "$LOGFILE" != "" ]; then
-			cat "${TEMPFILE}" | awk '{print "'"${datum}"' " $0}' >> "${LOGFILE}"
+			cat "${TEMPFILE}" | awk '{print "'"${TIMESTAMP}"' " $0}' >>"${LOGFILE}"
+			sync
 		fi
 	fi
 	rm -f "${TEMPFILE}"
