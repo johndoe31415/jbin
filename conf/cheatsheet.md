@@ -12,7 +12,7 @@ passwd the first time around). It's probably not very useful for anyone else.
   * debootstrap eoan subdir http://ftp.halifax.rwth-aachen.de/ubuntu/
   * debootstrap buster subdir http://ftp.de.debian.org/debian/
   * chmod 000 /etc/update-motd.d/10-help-text
-  * apt-get update && apt-get install acl apt-file bzip2 convmv cryptsetup gnupg git hdparm hexedit inetutils-tools kbd less linux-image-generic lm-sensors locales lshw lsof lzma man locate nano openssh-client openssh-server p7zip-full pciutils psmisc python3 pwgen recode rsync screen sqlite3 unzip usbutils vim xz-utils net-tools debsums grub2
+  * apt-get update && apt-get install acl apt-file bzip2 convmv cryptsetup gnupg git hdparm hexedit inetutils-tools kbd less linux-image-generic lm-sensors locales lshw lsof lzma man locate nano openssh-client openssh-server p7zip-full pciutils psmisc python3 python3-pip pwgen recode rsync screen sqlite3 unzip usbutils vim xz-utils net-tools debsums grub2
   * cd /usr; git clone https://github.com/johndoe31415/jbin
   * echo -e "de_DE.UTF-8 UTF-8\nen_US.UTF-8 UTF-8" >/etc/locale.gen && locale-gen
   * apt-get install ubuntu-mate-desktop
