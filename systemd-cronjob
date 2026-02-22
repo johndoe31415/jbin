@@ -1,0 +1,134 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	systemd-cronjob: Create systemd cron jobs
+#	Copyright (C) 2026-2026 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import os
+import json
+import contextlib
+import subprocess
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+class SystemdCronjob():
+	def __init__(self, args):
+		self._args = args
+
+	@property
+	def sdcj_prefix(self):
+		return f"sdcj-{self._args.name}"
+
+	@property
+	def systemd_service_unit_filename(self):
+		return os.path.expanduser(f"~/.local/share/systemd/user/{self.sdcj_prefix}.service")
+
+	@property
+	def systemd_timer_unit_filename(self):
+		return os.path.expanduser(f"~/.local/share/systemd/user/{self.sdcj_prefix}.timer")
+
+	def _ask(self, prompt: str, permissible_keys: set[str]):
+		while True:
+			answer = input(prompt).lower()
+			if answer in permissible_keys:
+				return answer
+
+	def _action_delete(self):
+		subprocess.run([ "systemctl", "--user", "stop", f"{self.sdcj_prefix}.timer" ], check = False)
+		subprocess.run([ "systemctl", "--user", "stop", f"{self.sdcj_prefix}.service" ], check = False)
+		subprocess.run([ "systemctl", "--user", "disable", f"{self.sdcj_prefix}.timer" ], check = False)
+		subprocess.run([ "systemctl", "--user", "disable", f"{self.sdcj_prefix}.service" ], check = False)
+		with contextlib.suppress(FileNotFoundError):
+			os.unlink(self.systemd_service_unit_filename)
+		with contextlib.suppress(FileNotFoundError):
+			os.unlink(self.systemd_timer_unit_filename)
+		subprocess.run([ "systemctl", "--user", "daemon-reload" ])
+
+	def _action_create(self):
+		os.makedirs(os.path.dirname(self.systemd_service_unit_filename), exist_ok = True)
+		os.makedirs(os.path.dirname(self.systemd_timer_unit_filename), exist_ok = True)
+
+		description = input("Cronjob description: ")
+		periodic_calendar = self._ask("(P)eriodic timer or based on (c)alendar time (p/c)? ", set("pc"))
+		if periodic_calendar == "p":
+			on_boot = input("Start this time interval after boot (e.g., 10min): ")
+			period = input("Start this time interval thereafter (e.g., 1hour): ")
+		else:
+			calendar_interval = input("Time match (e.g., *-*-* 15:00:00): ")
+		random_delay = input("Randomized delay (e.g., 1min or empty if none)   : ")
+		execute = input("Execute command: ")
+
+		with open(self.systemd_service_unit_filename, "w") as f:
+			print("[Unit]", file = f)
+			print(f"Description=systemd-cronjob: {description}", file = f)
+			print(file = f)
+			print("[Service]", file = f)
+			print("Type=oneshot", file = f)
+			print(f"ExecStart={execute}", file = f)
+			print(file = f)
+			print("[Install]", file = f)
+			print("WantedBy=default.target", file = f)
+
+		with open(self.systemd_timer_unit_filename, "w") as f:
+			print("[Unit]", file = f)
+			print(f"Description=systemd-cronjob: {description}", file = f)
+			print(file = f)
+			print("[Timer]", file = f)
+			if periodic_calendar == "p":
+				print(f"OnBootSec={on_boot}", file = f)
+				print(f"OnUnitActiveSec={period}", file = f)
+			else:
+				print(f"OnCalendar={calendar_interval}", file = f)
+				print("Persistent=true", file = f)
+			if random_delay != "":
+				print(f"RandomizedDelaySec={random_delay}", file = f)
+			print(file = f)
+			print("[Install]", file = f)
+			print("WantedBy=timers.target", file = f)
+
+		subprocess.run([ "systemctl", "--user", "daemon-reload" ])
+		subprocess.run([ "systemctl", "--user", "enable", f"{self.sdcj_prefix}.timer" ], check = False)
+		subprocess.run([ "systemctl", "--user", "enable", f"{self.sdcj_prefix}.service" ], check = False)
+		subprocess.run([ "systemctl", "--user", "start", f"{self.sdcj_prefix}.timer" ], check = False)
+
+	def _action_show(self):
+		proc = subprocess.run([ "systemctl", "--user", "-o", "json" ], capture_output = True, check = True)
+		status = json.loads(proc.stdout)
+		for entry in status:
+			unit = entry.get("unit", "")
+			if unit.startswith("sdcj-") and unit.endswith(".timer"):
+				name = unit[5 : -6]
+				description = entry["description"][17 : ]
+				print(f"{name:<20s} {description}")
+
+	def run(self):
+		if self._args.name is None:
+			self._action_show()
+		elif self._args.delete:
+			self._action_delete()
+		else:
+			self._action_create()
+
+parser = FriendlyArgumentParser(description = "Frontend for the annoying, cumbersome and boilerplate-heavy systemd 'timer' facility.")
+parser.add_argument("-d", "--delete", action = "store_true", help = "Delete this cronjob")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
+parser.add_argument("name", nargs = "?", help = "Name of the systemd cronjob to create/delete. Shows all timers when argument omitted.")
+args = parser.parse_args(sys.argv[1:])
+
+SystemdCronjob(args).run()
