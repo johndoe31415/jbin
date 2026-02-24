@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
-#	build_sdist: Build a Python package from the current working directory using pyproject.toml
+#	build_sdist: Build a Python package from the current working directory using setuptools
 #	Copyright (C) 2021-2026 Johannes Bauer
 #
 #	This file is part of jbin.
@@ -20,7 +20,6 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-import re
 import os
 import sys
 import shutil
@@ -28,7 +27,7 @@ import subprocess
 import contextlib
 from FriendlyArgumentParser import FriendlyArgumentParser
 
-parser = FriendlyArgumentParser(description = "Build a Python package from the current working directory from pyproject.toml.")
+parser = FriendlyArgumentParser(description = "Build a Python package from the current working directory.")
 parser.add_argument("-n", "--name", metavar = "pkgname", help = "Specifies the module name that is used to generate the package. By default, the basename of the current working directory is used for this.")
 parser.add_argument("-l", "--local-install", action = "store_true", help = "Locally install the package after building it and mark it as editable.")
 parser.add_argument("-u", "--twine-upload", action = "store_true", help = "Upload the package to twine after building it.")
@@ -41,74 +40,62 @@ else:
 	pkgname = args.name
 
 try:
-	sys.path.insert(0, "src")
+	sys.path.insert(0, ".")
 	module = __import__(pkgname)
 except ModuleNotFoundError as e:
-	print(f"Fatal: Could not find module {pkgname}: {str(e)}")
+	print("Fatal: Could not find module '%s' (%s)." % (pkgname, str(e)))
 	sys.exit(1)
 
 imported_path = os.path.realpath(module.__file__)
-wanted_path = os.path.realpath(f"src/{pkgname}/__init__.py")
+wanted_path = os.path.realpath(pkgname + "/__init__.py")
 if imported_path != wanted_path:
-	print(f"Fatal: Did not import the correct module. Wanted {os.path.relpath(wanted_path, '.')} but imported {os.path.relpath(imported_path, '.')}")
+	print("Fatal: Did not import the correct module. Wanted %s but imported %s." % (wanted_path, imported_path))
 	sys.exit(1)
 
 version = getattr(module, "VERSION", None)
 if version is None:
-	print(f"Fatal: Could not get VERSION information from module \"{pkgname}\"")
+	print("Fatal: Could not get VERSION information from module %s." % (str(module)))
 	sys.exit(1)
 
 if len(version) == 0:
-	print(f"Fatal: Could not get VERSION information from module \"{pkgname}\", retrieved empty string.\"")
+	print("Fatal: Could not get VERSION information from module %s, retrieved empty string." % (str(module)))
 	sys.exit(1)
 
 if not version[0].isdigit():
-	print(f"Fatal: Could not get VERSION information from module \"{pkgname}\", does not start with a digit.\"")
+	print("Fatal: Could not get VERSION information from module %s, does not start with a digit." % (str(module)))
 	sys.exit(1)
 
 if ("rc" in version) and (args.twine_upload):
-	print(f"Error: Refusing to upload release candidate \"{version}\" to PyPi.")
+	print("Error: Refusing to upload release candidate '%s' to PyPi." % (version))
 	sys.exit(1)
 
-with open("pyproject.toml") as f:
-	pyproject_toml = f.read()
+setup_file = os.path.realpath(imported_path + "/../../setup.py")
+setup_template_file = os.path.realpath(imported_path + "/../../setup_template.py")
+if os.path.isfile(setup_template_file):
+	with open(setup_template_file) as f:
+		setup_py = f.read()
+	setup_py = setup_py.replace("${PACKAGE_VERSION}", version)
+	with open("setup.py", "w") as f:
+		f.write(setup_py)
 
-rematch = re.search(r"^version\s*=\s*\"(?P<pyproject_version>.*)\"$", pyproject_toml, flags = re.MULTILINE)
-if rematch is None:
-	print(f"Error: Unable to find regex match in pyproject.toml to retrieve version number.")
-	sys.exit(1)
-
-pyproject_version = rematch["pyproject_version"]
-if pyproject_version != version:
-	print(f"Error: Version number {version} of package does not match version number {pyproject_version} in pyproject.toml")
-	yn = input(f"Fix pyproject.toml by setting version number to {version} (y/n)? ")
-	yn = yn.lower()
-	if yn != "y":
-		print("Aborted.")
-		sys.exit(1)
-
-	pyproject_toml = re.sub(r"^version\s*=\s*\"(?P<pyproject_version>.*)\"$", f"version = \"{version}\"", pyproject_toml, flags = re.MULTILINE)
-	with open("pyproject.toml", "w") as f:
-		f.write(pyproject_toml)
-
+with contextlib.suppress(FileNotFoundError):
+	shutil.rmtree("build")
 with contextlib.suppress(FileNotFoundError):
 	shutil.rmtree("dist")
 with contextlib.suppress(FileNotFoundError):
-	shutil.rmtree(f"src/{pkgname}.egg-info")
+	shutil.rmtree("%s.egg-info" % (pkgname))
 
-cmd = [ "python3", "-m", "build" ]
+cmd = [ "python3", "setup.py", "sdist" ]
 if args.verbose >= 1:
-	print(f"Running: {' '.join(cmd)}")
-subprocess.check_call(cmd)
-
+	print("Running: %s" % (" ".join(cmd)))
+subprocess.run(cmd)
 if args.local_install:
-	cmd = [ "pip3", "install", "--editable", "." ]
+	cmd = [ "pip3", "install", "--editable", os.path.realpath(setup_file + "/..")  ]
 	if args.verbose >= 1:
-		print(f"Running: {' '.join(cmd)}")
-	subprocess.check_call(cmd)
-
+		print("Running: %s" % (" ".join(cmd)))
+	subprocess.run(cmd)
 if args.twine_upload:
 	cmd = [ "twine", "upload", "dist/%s-%s.tar.gz" % (pkgname, version) ]
 	if args.verbose >= 1:
-		print(f"Running: {' '.join(cmd)}")
-	subprocess.check_call(cmd)
+		print("Running: %s" % (" ".join(cmd)))
+	subprocess.run(cmd)
