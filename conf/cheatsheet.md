@@ -729,3 +729,6 @@ yt-dlp -x --audio-format mp3 -o '%(playlist_index)02d - %(title)s.mp3' 'https://
 snap refresh --hold=forever     # Disable auto-update
 snap refresh                    # Trigger update
 snap refresh --unhold           # Make Snap annoying again
+
+## Disable SNAP User Daemon (annoying notifications)
+systemctl --user disable snapd.session-agent.socket; systemctl --user mask snapd.session-agent.socket; systemctl --user stop snapd.session-agent.socket; systemctl --user stop snapd.session-agent.service
