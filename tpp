@@ -58,6 +58,7 @@ class TPP():
 		self._config.read([ self._args.config_filename ])
 		self._enabled_linter_patterns = [ self._parse_linter_pattern(pattern_str) for pattern_str in self._section("linter.enable") ]
 		self._disabled_linter_patterns = [ self._parse_linter_pattern(pattern_str) for pattern_str in self._section("linter.disable") ]
+		self._returncode = 127
 
 	@property
 	def default_section(self):
@@ -66,6 +67,10 @@ class TPP():
 	@property
 	def statefile(self):
 		return os.path.dirname(self._args.config_filename) + ".tpp_state.json"
+
+	@property
+	def returncode(self):
+		return self._returncode
 
 	def _section(self, section_name: str):
 		if self._config.has_section(section_name):
@@ -107,6 +112,7 @@ class TPP():
 		if len(findings) == 0:
 			print("No linter findings.")
 		else:
+			self._returncode |= 2
 			print(f"{len(findings)} linter findings:")
 		for finding in findings:
 			print(f"{finding['idstr']} {finding['path']} line {finding['line']} {finding['message']}")
@@ -180,6 +186,7 @@ class TPP():
 				os.unlink(self.statefile)
 		else:
 			# Something failed, record it
+			self._returncode |= 1
 			if self._args.limit_failed_recording == 0:
 				record_tests = result.failure_details
 			else:
@@ -198,6 +205,7 @@ class TPP():
 			os.unlink(self.statefile)
 
 	def run(self):
+		self._returncode = 0
 		if self._args.clean:
 			self._clean()
 		if self._args.lint_code:
@@ -206,6 +214,7 @@ class TPP():
 			self._run_tests()
 		if self._args.coverage:
 			self._coverage_report()
+		return self.returncode
 
 
 parser = FriendlyArgumentParser(description = "tpp: Test Python Project wrapper for linting, coverage and testing of Python code")
@@ -221,4 +230,4 @@ parser.add_argument("-v", "--vim", action = "store_true", help = "Run vim with t
 parser.add_argument("testcase", nargs = "*", default = [ ], help = "Testcase modules/names to validate. Can be specified multiple times. By default, runs all tests when there were no previous failures and runs only previously failed tests if there were failures.")
 args = parser.parse_args(sys.argv[1:])
 
-TPP(args).run()
+sys.exit(TPP(args).run())
