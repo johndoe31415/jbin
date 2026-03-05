@@ -24,10 +24,15 @@ git log -n 1
 echo
 read -p "Fixup in preceding commit (y/n)? " yn
 if [ "$yn" == "y" ] || [ "$yn" == "Y" ]; then
-	git stash
+	STASH_HEAD_BEFORE=$(git rev-parse -q --verify refs/stash || echo -)
+	git stash push
+	STASH_HEAD_AFTER=$(git rev-parse -q --verify refs/stash || echo -)
 	git commit --amend --no-verify --fixup="HEAD^"
 	EDITOR="true" git rebase -i --autosquash HEAD^^
-	git stash pop
+	if [ "$STASH_HEAD_BEFORE" != "$STASH_HEAD_AFTER" ]; then
+		# Stash did work, we had changes
+		git stash pop
+	fi
 else
 	echo "Leaving commit unchanged."
 fi
