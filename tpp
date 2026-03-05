@@ -126,13 +126,13 @@ class TPP():
 
 	@contextlib.contextmanager
 	def _coverage(self):
-		if self._args.coverage:
+		if self._args.coverage or self._args.coverage_scripts:
 			self._cov = coverage.Coverage(omit = [ "tpp" ])
 			self._cov.start()
 		try:
 			yield
 		finally:
-			if self._args.coverage:
+			if self._args.coverage or self._args.coverage_scripts:
 				self._cov.stop()
 				self._cov.save()
 
@@ -194,7 +194,14 @@ class TPP():
 			with open(self.statefile, "w") as f:
 				f.write(json.dumps([ test.id() for test in record_tests ]))
 
+	def _coverage_scripts(self):
+		for script_name in self._section("coverage.scripts"):
+			subprocess.run([ script_name ])
+
 	def _coverage_report(self):
+		# Load coverage data again because the scripts might have appended data
+		self._cov = coverage.Coverage()
+		self._cov.load()
 		self._cov.report(omit = list(self._section("coverage.ignore")))
 		self._cov.html_report(omit = list(self._section("coverage.ignore")))
 
@@ -212,7 +219,9 @@ class TPP():
 			self._run_linter()
 		else:
 			self._run_tests()
-		if self._args.coverage:
+		if self._args.coverage_scripts:
+			self._coverage_scripts()
+		if self._args.coverage or self._args.coverage_scripts:
 			self._coverage_report()
 		return self.returncode
 
@@ -223,9 +232,10 @@ parser.add_argument("-n", "--limit-failed-recording", metavar = "count", type = 
 parser.add_argument("-a", "--test-all", action = "store_true", help = "Even if a statefile exist, do not use it and test all (or specified) testcases.")
 parser.add_argument("-d", "--show-test-duration", action = "store_true", help = "Show duration of test cases.")
 parser.add_argument("-A", "--set-test-environment", action = "store_true", help = "Set environment variables that are specified in configuration (typically used to enable even slow tests that are usually excluded).")
-parser.add_argument("-C", "--clean", action = "store_true", help = "Do not remember any state and remove any preexisting state file.")
 parser.add_argument("-c", "--coverage", action = "store_true", help = "Run coverage tests as well.")
+parser.add_argument("-C", "--coverage-scripts", action = "store_true", help = "Run coverage scripts after executing unit tests. Implies --coverage.")
 parser.add_argument("-l", "--lint-code", action = "store_true", help = "Run linter instead of testing code.")
+parser.add_argument("--clean", action = "store_true", help = "Remove statefile and coverage files before starting.")
 parser.add_argument("-v", "--vim", action = "store_true", help = "Run vim with the linter fix commands if there are issues.")
 parser.add_argument("testcase", nargs = "*", default = [ ], help = "Testcase modules/names to validate. Can be specified multiple times. By default, runs all tests when there were no previous failures and runs only previously failed tests if there were failures.")
 args = parser.parse_args(sys.argv[1:])
