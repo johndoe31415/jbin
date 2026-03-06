@@ -203,11 +203,16 @@ class TPP():
 		self._cov = coverage.Coverage()
 		self._cov.load()
 		self._cov.report(omit = list(self._section("coverage.ignore")))
-		self._cov.html_report(omit = list(self._section("coverage.ignore")))
+		if self._args.report_xml:
+			self._cov.xml_report(omit = list(self._section("coverage.ignore")))
+		else:
+			self._cov.html_report(omit = list(self._section("coverage.ignore")))
 
 	def _clean(self):
 		with contextlib.suppress(FileNotFoundError):
 			os.unlink(".coverage")
+		with contextlib.suppress(FileNotFoundError):
+			os.unlink("coverage.xml")
 		with contextlib.suppress(FileNotFoundError):
 			os.unlink(self.statefile)
 
@@ -228,6 +233,7 @@ class TPP():
 
 parser = FriendlyArgumentParser(description = "tpp: Test Python Project wrapper for linting, coverage and testing of Python code")
 parser.add_argument("--config-filename", metavar = "filename", default = ".tpp.conf", help = "Configuration filename. Defaults to %(default)s.")
+parser.add_argument("-x", "--report-xml", action = "store_true", help = "Create XML report instead of HTML.")
 parser.add_argument("-n", "--limit-failed-recording", metavar = "count", type = int, default = 1, help = "When tests are failing, on a subsequent run only those failed tests are re-run. This limits the amount of tests that are run. Defaults to %(default)d. When zero, all failed tests are recorded.")
 parser.add_argument("-a", "--test-all", action = "store_true", help = "Even if a statefile exist, do not use it and test all (or specified) testcases.")
 parser.add_argument("-d", "--show-test-duration", action = "store_true", help = "Show duration of test cases.")
