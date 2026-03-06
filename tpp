@@ -196,7 +196,7 @@ class TPP():
 
 	def _coverage_scripts(self):
 		for script_name in self._section("coverage.scripts"):
-			subprocess.run([ script_name ])
+			subprocess.run([ script_name ], check = True)
 
 	def _coverage_report(self):
 		# Load coverage data again because the scripts might have appended data
