@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	jsonlint: Pretty-print JSON data
-#	Copyright (C) 2019-2025 Johannes Bauer
+#	Copyright (C) 2019-2026 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -70,7 +70,7 @@ class JSONLinter():
 			if self._args.in_place:
 				print("Cannot modify stdin in-place, incompatible options.", file = sys.stderr)
 				return 1
-			self._lint_data(sys.stdin.read())
+			print(self._lint_data(sys.stdin.read()))
 		else:
 			# Lint files
 			for filename in self._args.filename:
