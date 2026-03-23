@@ -53,6 +53,8 @@ class CustomTestRunner(unittest.TextTestRunner):
 class TPP():
 	def __init__(self, args):
 		self._args = args
+		if not os.path.isfile(self._args.config_filename):
+			raise FileNotFoundError(f"Configuration file not found: {self._args.config_filename}")
 		self._config = configparser.ConfigParser(allow_no_value = True, delimiters = ("=", ), allow_unnamed_section =  True)
 		self._config.optionxform = str
 		self._config.read([ self._args.config_filename ])
