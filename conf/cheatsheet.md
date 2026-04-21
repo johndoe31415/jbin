@@ -732,3 +732,7 @@ snap refresh --unhold           # Make Snap annoying again
 
 ## Disable SNAP User Daemon (annoying notifications)
 systemctl --user disable snapd.session-agent.socket; systemctl --user mask snapd.session-agent.socket; systemctl --user stop snapd.session-agent.socket; systemctl --user stop snapd.session-agent.service
+
+## Flaky headphone jack leads to annoying notifications
+Diagnose: pw-mon
+Disable front panel headphone jack: hdajackretask
