@@ -736,3 +736,12 @@ systemctl --user disable snapd.session-agent.socket; systemctl --user mask snapd
 ## Flaky headphone jack leads to annoying notifications
 Diagnose: pw-mon
 Disable front panel headphone jack: hdajackretask
+
+## Disable intel-hda power save
+Makes output high-Z, causes 50 Hz hum
+Disable with:
+# echo "options snd_hda_intel power_save=0" >/etc/modprobe.d/snd-hda-intel.conf
+# update-initramfs -u
+Also edit /etc/tlp.conf and set
+SOUND_POWER_SAVE_ON_AC=0
+SOUND_POWER_SAVE_ON_BAT=0
