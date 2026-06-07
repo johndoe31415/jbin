@@ -745,3 +745,6 @@ Disable with:
 Also edit /etc/tlp.conf and set
 SOUND_POWER_SAVE_ON_AC=0
 SOUND_POWER_SAVE_ON_BAT=0
+
+## Disable Proton DXVK (workaround Radeon RX5700 bug/crashes)
+PROTON_USE_WINED3D=1 %command%
