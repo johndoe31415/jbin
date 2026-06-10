@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	mkapt: Create /etc/apt/sources.list
-#	Copyright (C) 2020-2025 Johannes Bauer
+#	Copyright (C) 2020-2026 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -31,23 +31,24 @@ definitions = [
 		"name": "Ubuntu",
 		"releases": [
 			("artful", "2017.10"),
-			("bionic", "2018.04"),
+			("bionic", "2018.04 LTS"),
 			("cosmic", "2018.10"),
 			("disco", "2019.04"),
 			("eoan", "2019.10"),
-			("focal", "2020.04"),
+			("focal", "2020.04 LTS"),
 			("groovy", "2020.10"),
 			("hirsute", "2021.04"),
 			("impish", "2021.10"),
-			("jammy", "2022.04"),
+			("jammy", "2022.04 LTS"),
 			("kinetic", "2022.10"),
 			("lunar", "2023.04"),
 			("mantic", "2023.10"),
-			("noble", "2024.04"),
+			("noble", "2024.04 LTS"),
 			("oracular", "2024.10"),
 			("plucky", "2025.04"),
 			("questing", "2025.10"),
-#			("resolute", "2026.04"),
+			("resolute", "2026.04 LTS"),
+#			("stonking", "2026.10"),
 		],
 		"mirrors": [
 			"http://ftp.halifax.rwth-aachen.de/ubuntu/",
