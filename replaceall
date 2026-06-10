@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	replaceall: Search/replace pattern on many files using Python regexes
-#	Copyright (C) 2019-2024 Johannes Bauer
+#	Copyright (C) 2019-2026 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -37,7 +37,7 @@ parser.add_argument("-t", "--template", choices = [ "copyrightyear", "py3classes
 parser.add_argument("-c", "--commit", action = "store_true", help = "Do not just print potential replacements, actually write the file.")
 parser.add_argument("-n", "--no-backup", action = "store_true", help = "Do not create backup files.")
 parser.add_argument("-R", "--recurse", action = "store_true", help = "Recursively descend into subdirectories.")
-parser.add_argument("-g", "--glob", metavar = "str", help = "When encountering a directory, this can give a globbing pattern. If not given, all files are processed.")
+parser.add_argument("-g", "--glob", metavar = "str", action = "append", default = [ ], help = "When encountering a directory, this can give a globbing pattern. If not given, all files are processed. Can be given multiple times.")
 parser.add_argument("-f", "--force", action = "store_true", help = "Overwrite backup files if they already exist.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Be more verbose. Specify multiple times for even greater verbosity.")
 parser.add_argument("filename", metavar = "filename", type = str, nargs = "+", help = "Files to be searched/replaced. Can be '-' to specify reading file list from stdin.")
@@ -97,15 +97,16 @@ class SearchReplacer():
 		return content
 
 	def _apply_directory(self, dirname):
-		if self._args.glob is not None:
-			for filename in glob.glob(dirname + "/" + self._args.glob):
-				if os.path.isfile(filename):
-					self.apply(filename)
+		if len(self._args.glob) > 0:
+			for glob_pattern in self._args.glob:
+				for filename in glob.glob(dirname + "/" + glob_pattern):
+					if os.path.isfile(filename):
+						self.apply(filename)
 
-			for filename in os.listdir(dirname):
-				full_filename = dirname + "/" + filename
-				if os.path.isdir(full_filename):
-					self._apply_directory(full_filename)
+				for filename in os.listdir(dirname):
+					full_filename = dirname + "/" + filename
+					if os.path.isdir(full_filename):
+						self._apply_directory(full_filename)
 		else:
 			for filename in os.listdir(dirname):
 				full_filename = dirname + "/" + filename
