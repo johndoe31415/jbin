@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #	jbin - Joe's miscellaneous scripts, tools and configs
 #	sanepass: Create fixed-entropy passwords with a nice alphabet
-#	Copyright (C) 2018-2024 Johannes Bauer
+#	Copyright (C) 2018-2026 Johannes Bauer
 #
 #	This file is part of jbin.
 #
@@ -32,7 +32,7 @@ from FriendlyArgumentParser import FriendlyArgumentParser
 
 class PasswordGenerator():
 	_AMBIGUOUS_CHARACTERS = set("".join([
-		"1liI",
+		"1liI!",
 		"B8",
 		"O0o",
 		"UV",
@@ -134,7 +134,7 @@ class PasswordGenerator():
 			chars.append(alphabet[next_choice])
 		return chars
 
-	def _validate(self, pw: str):
+	def _validate(self, pw: str) -> bool:
 		if not self._args.guarantee_special:
 			return True
 
