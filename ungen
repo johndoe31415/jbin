@@ -1,0 +1,69 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	ungen: Generate a pseudo-random username
+#	Copyright (C) 2023-2024 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import random
+import sys
+import re
+import subprocess
+import datetime
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+def randval():
+	r = random.random()
+	if r < 0.3:
+		return random.randint(0, 99)
+	elif r < 0.6:
+		slen = 3 if (random.random() < 0.5) else 4
+		inc = random.randint(0, 2)
+		sval = random.randint(0, 4)
+		if inc == 0:
+			sval += 1
+		return "".join(str((sval + q * inc) % 10) for q in range(slen))
+	else:
+		age = (19, 60)
+		year = datetime.datetime.today().year
+		return random.randint(year - age[1], year - age[0])
+
+parser = FriendlyArgumentParser(description = "Create usernames for various purposes")
+parser.add_argument("-l", "--language", metavar = "country_code", default = "en", help = "Use this aspell dictionary for basenames. Defaults to %(default)s.")
+parser.add_argument("-n", "--username-count", metavar = "count", type = int, default = 1, help = "Create this amount of usernames. Defaults to %(default)d.")
+parser.add_argument("-u", "--filter-us-keyboard", action = "store_true", help = "Filter characters that are on different places on a QWERTZ vs. QWERTY keyboard.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Increase output verbosity.")
+args = parser.parse_args(sys.argv[1:])
+
+filter_word_re = re.compile(r"(?P<base_word>[a-zA-Z]{3,8}?)(?P<tail>/.*|'.*|s)$")
+word_list = subprocess.check_output([ "aspell", "--lang", args.language, "dump", "master" ]).decode().rstrip("\r\n").split("\n")
+filtered_word_list = set()
+for word in word_list:
+	rematch = filter_word_re.fullmatch(word)
+	if rematch is None:
+		continue
+	filtered_word_list.add(rematch["base_word"].lower())
+filtered_word_list = list(filtered_word_list)
+
+for n in range(args.username_count):
+	samples = random.sample(filtered_word_list, 2)
+
+	if len(samples[0]) + len(samples[1]) <= 11:
+		print(f"{samples[0]}{samples[1]}{randval()}")
+	else:
+		print(f"{samples[0]}{randval()}")
