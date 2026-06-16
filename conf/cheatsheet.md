@@ -250,6 +250,7 @@ twine upload dist/foobar-1.2.3.tar.gz
 
 ## Python venv
 /usr/bin/python3 -m venv "${HOME}/.local"
+V="3.11"; rm -fr ~/.local/lib/python${V} ~/.local/include/${V} ~/.local/include/site/python${V} ~/.local/bin/f2py${V} ~/.local/include/python${V} ~/.local/bin/pip${V} ~/.local/bin/python${V} ~/.local/bin/coverage-${V}
 
 ## Mounting CIFS/Samba share
 mount.cifs -o user=guest,pass=guest,uid=1000,gid=1000,dir_mode=0755,file_mode=0644 //sz/Users dos
