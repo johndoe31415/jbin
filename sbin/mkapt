@@ -81,6 +81,7 @@ definitions = [
 			("bookworm", "6'2023"),
 			("trixie", "9'2025"),
 #			("forky", "N/A"),
+#			("duke", "N/A"),
 		],
 		"mirrors": [
 			"http://ftp.de.debian.org/debian/",
