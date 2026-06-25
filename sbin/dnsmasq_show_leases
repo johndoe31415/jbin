@@ -31,7 +31,7 @@ from FriendlyArgumentParser import FriendlyArgumentParser
 class Lease():
 	lease_until_ts: int
 	mac_addr: str
-	ip_addr: ipaddress.IPAddress
+	ip_addr: ipaddress.IPv4Address
 	name: str
 	uid: str
 
