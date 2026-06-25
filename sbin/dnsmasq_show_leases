@@ -1,0 +1,71 @@
+#!/usr/bin/python3
+#	jbin - Joe's miscellaneous scripts, tools and configs
+#	dnsmasq_show_leases: Show DHCP leases that clients have gotten
+#	Copyright (C) 2026-2026 Johannes Bauer
+#
+#	This file is part of jbin.
+#
+#	jbin is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	jbin is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with jbin. If not, see <http://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import re
+import sys
+import time
+import ipaddress
+import dataclasses
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+@dataclasses.dataclass
+class Lease():
+	lease_until_ts: int
+	mac_addr: str
+	ip_addr: ipaddress.IPAddress
+	name: str
+	uid: str
+
+	@property
+	def validity_secs(self):
+		return self.lease_until_ts - time.time()
+
+	def print(self):
+		print(f"{self.ip_addr:<16s} {self.name:<20s} {self.mac_addr:<25s} {self.validity_secs / 3600:.1f} hrs")
+
+class LeasePrinter():
+	def __init__(self, args):
+		self._args = args
+
+	def run(self):
+		leases = [ ]
+		with open(self._args.lease_file) as f:
+			for line in f:
+				line = line.rstrip("\r\n").split()
+				if len(line) != 5:
+					continue
+				(lease_until_ts, mac_addr, ip_addr, name, uid) = line
+				lease_until_ts = int(lease_until_ts)
+				ip_addr = ipaddress.ip_address(ip_addr)
+				lease = Lease(lease_until_ts = lease_until_ts, mac_addr = mac_addr, ip_addr = ip_addr, name = name, uid = uid)
+				if (self._args.show_expired_leases) or (lease.validity_secs > 0):
+					leases.append(lease)
+
+		leases.sort(key = lambda lease: (lease.ip_addr, lease.name, lease.mac_addr))
+		for lease in leases:
+			lease.print()
+
+parser = FriendlyArgumentParser(description = "Show dnsmasq DHCP leases which clients have acquired.")
+parser.add_argument("-f", "--lease-file", metavar = "filename", default = "/var/lib/misc/dnsmasq.leases", help = "Specifies lease file to use. Defaults to %(default)s.")
+parser.add_argument("-e", "--show-expired-leases", action = "store_true", help = "Also print expired leases.")
+args = parser.parse_args(sys.argv[1:])
+LeasePrinter(args).run()
